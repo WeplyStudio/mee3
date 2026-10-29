@@ -1,0 +1,93 @@
+# Jason — Designer & Software Engineer
+
+> Minimalist editorial portfolio of Jason, designer and frontend software engineer crafting high-performance, resilient, and human-centered digital products.
+
+## About & Profile
+
+Jason is a designer and software engineer with over 5 years of craft experience bridging the gap between meticulous UI/UX architecture and robust frontend engineering. With over 30 shipped production releases and products serving 100k+ active users, Jason focuses on reducing complexity and building durable, elegant software.
+
+- **Role**: Product Designer & Lead Frontend Engineer
+- **Experience**: 5+ years of craft
+- **Shipped Products**: 30+ production releases
+- **Active User Impact**: 100k+ users interacting with delivered software daily
+- **Performance Standard**: 99.9% performance score (zero bloat, highly accessible)
+- **Primary Social / Instagram**: https://instagram.com/jasonn.doc
+- **GitHub**: https://github.com
+
+---
+
+## Core Principles & Design Philosophy
+
+1. **Say less, tell more**: Brevity and intentionality over ornamental noise.
+2. **Simplicity is the hardest work**: Eliminating non-essentials until only meaning remains.
+3. **Every detail is an intention**: Every pixel, transition, and line of code must justify its existence with purpose.
+4. **Consistency builds trust**: Mathematical typography scales and coherent tokenized design systems.
+5. **Haste ruins the beautiful**: Taking the time to craft lasting, reliable experiences.
+
+---
+
+## Navigation & Pages
+
+- [Home](/): Hero editorial layout, selected case studies, interactive sound canvas, principles, philosophy, services, impact stats, and FAQs.
+- [About Me](/aboutme): Story, personal journey ("i trust my eye, not my hands"), design philosophy, technical competencies, and interactive canvas.
+- [Projects](/projects): Complete gallery and filterable directory of production works and case studies.
+- [Contact](/contact): Direct contact form and collaboration channels.
+- [Full LLM Context](/llms-full.txt): Comprehensive extended documentation and detailed case studies for LLMs.
+
+---
+
+## Featured Projects & Case Studies
+
+### 1. Zylo — High-Performance Cloud & Web Hosting Platform
+- **URL**: [/project/zylo](/project/zylo) (Live: https://zylo.ai)
+- **Category**: Cloud Infrastructure & Web Hosting
+- **Role**: Founder & Lead Architect
+- **Year**: 2025
+- **Tech Stack**: React, Next.js, TypeScript, Tailwind CSS, Node.js, Docker, Edge CDN, Figma
+- **Metrics**: 99.99% uptime SLA, < 180ms global TTFB, 10,000+ active websites hosted
+- **Summary**: Full-stack web hosting and deployment platform featuring real-time server telemetry (CPU/RAM/Bandwidth), automated SSL provisioning, 1-click Git deployment webhooks, and wildcard DNS routing.
+
+### 2. Trufin — Fintech Risk Intelligence & Legal Entity Verification
+- **URL**: [/project/trufin](/project/trufin) (Live: https://trufin.io)
+- **Category**: Fintech Security & Institutional Verification
+- **Role**: Lead Product Designer & Frontend Engineer
+- **Year**: 2025
+- **Tech Stack**: React, TypeScript, Tailwind CSS, REST API, Search Indexer, Figma
+- **Metrics**: 100% verified regulatory registry cross-matching, < 0.2s instant search, 50k+ flagged fraudulent entities
+- **Summary**: Public intelligence and verification engine allowing citizens and businesses to verify official financial institution licensing and detect predatory illegal lending clones in real time.
+
+### 3. Krigstudio — Interactive Digital Invitation & Event Platform
+- **URL**: [/project/krigstudio](/project/krigstudio) (Live: https://krigstudio.com)
+- **Category**: Event Web Platform & Digital Invitations
+- **Role**: Creator & Lead Frontend Developer
+- **Year**: 2024
+- **Tech Stack**: React, Next.js, TypeScript, Tailwind CSS, Framer Motion, Web Audio API, Figma
+- **Metrics**: 95% RSVP confirmation rate, 60 FPS smooth mobile animations, 500+ celebrated weddings & events
+- **Summary**: Interactive bespoke event platform featuring dynamic personalized guest covers, real-time RSVP guestbooks, digital gift/bank transfers with dynamic QR codes, spatial background audio, and Google Maps routing.
+
+---
+
+## Core Services
+
+- **Product & UI/UX Design**: Wireframing, human-centered user flows, Figma design systems, interactive high-fidelity prototyping, and UI/UX design audits.
+- **Frontend Engineering**: Blazingly fast client-side applications built with React, Next.js, TypeScript, Tailwind CSS, Motion UI, and performance optimizations.
+- **Design Systems & Tokenization**: Atomic component libraries, design tokens, WCAG AA accessibility compliance, and interactive documentation.
+- **Digital Brand Identity & Micro-Interactions**: Bespoke typography pairings, fluid 60fps micro-animations, tactile sound/visual feedback, and brand guidelines.
+
+---
+
+## Technical Stack & Capabilities
+
+- **Languages**: TypeScript, JavaScript (ESNext), HTML5, CSS3
+- **Frontend Frameworks & Libraries**: React, Next.js, Astro, Expo (React Native), Redux Toolkit, Tailwind CSS, Motion / Framer Motion, GSAP, Three.js
+- **Build Tools & Environment**: Vite, Webpack, Node.js, Docker
+- **Design Tools**: Figma, Adobe Photoshop, Adobe Illustrator
+- **Architecture**: Design tokens, component modularity, REST APIs, Web Audio API, responsive fluid layouts
+
+---
+
+## Contact & Inquiries
+
+- **Email & Form**: Available on the [Contact Page](/contact)
+- **Instagram**: [@jasonn.doc](https://instagram.com/jasonn.doc)
+- **Availability**: Open for product design contracts, frontend engineering, design systems, and advisory roles.

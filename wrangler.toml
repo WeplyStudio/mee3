@@ -1,0 +1,10 @@
+# Cloudflare Worker Configuration for D1 Database
+name = "d1-portfolio-backend"
+main = "worker.js"
+compatibility_date = "2024-09-01"
+
+# Cloudflare D1 Database Binding
+[[d1_databases]]
+binding = "DB"
+database_name = "portfolio-d1"
+database_id = "YOUR_D1_DATABASE_ID_HERE"

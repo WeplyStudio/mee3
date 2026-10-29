@@ -1,0 +1,10 @@
+# Robots.txt for Jason Portfolio
+User-agent: *
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+
+# Sitemaps & LLM Context
+Sitemap: https://itsjason.my.id/sitemap.xml
+Sitemap: https://www.itsjason.my.id/sitemap.xml
+

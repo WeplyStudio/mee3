@@ -1,0 +1,144 @@
+# Jason — Designer & Software Engineer (Full Context)
+
+> Complete knowledge base, case studies, technical documentation, design philosophies, and FAQ for AI Language Models (LLMs).
+
+---
+
+## 1. Biography & Professional Summary
+
+Jason is a designer and software engineer crafting refined, human-centered digital products and resilient software systems. With 5+ years of craft experience, Jason specializes in bridging the divide between high-fidelity UI/UX design and scalable frontend codebases.
+
+- **Name**: Jason
+- **Specialization**: Product Design, UI/UX Architecture, Frontend Engineering, Design Systems
+- **Location**: Remote / Worldwide
+- **Craft Track Record**: 5+ years, 30+ shipped production releases, 100k+ active daily users
+- **Primary Channels**:
+  - Website: [/](/)
+  - Instagram: https://instagram.com/jasonn.doc
+  - GitHub: https://github.com
+
+---
+
+## 2. Core Philosophy & Design Principles
+
+### The Five Axioms
+1. **Say less, tell more**: Cut out decorative clutter. Every element must communicate clear intent.
+2. **Simplicity is the hardest work**: True visual clarity emerges only when every non-essential component is removed until the core intention shines.
+3. **Every detail is an intention**: Every border radius, spacing unit, color tint, and line of code must be mathematically and optically justified.
+4. **Consistency builds trust**: Design tokens and scalable component architectures preserve velocity and cognitive calmness.
+5. **Haste ruins the beautiful**: Great products are created by taking the deliberate time to polish micro-interactions and optimize performance.
+
+### Philosophy Deep Dives
+- **Aesthetics**: Beauty comes not from adding, but from taking away. Form should not only follow function—it should elevate function into an effortless, quiet experience.
+- **Entropy**: Chaos is the default state in software and design systems. Order requires deliberate architectural discipline and strong foundational axioms.
+- **Rationality**: Purpose is the ultimate aesthetic. Subjective intuition sparks creative hypotheses, but rigorous logic and user testing prove them.
+
+---
+
+## 3. Case Studies & Shipped Projects
+
+### Project 01: Zylo — High-Performance Cloud & Web Hosting Platform
+- **URL**: [/project/zylo](/project/zylo)
+- **External URL**: https://zylo.ai
+- **Category**: Cloud Infrastructure & Web Hosting
+- **Role**: Founder & Lead Architect
+- **Year**: 2025
+- **Technologies**: React, Next.js, TypeScript, Tailwind CSS, Node.js, Docker, Edge CDN, Figma
+- **Deliverables**: Cloud Hosting Console, 1-Click Git Deployment Engine, Domain & DNS Manager, Server & CDN Health Telemetry
+- **The Problem**: Traditional hosting providers are cluttered with convoluted control panels, hidden renewal fees, slow server provisioning, and fragmented domain management.
+- **Architectural Decisions**: Engineered a tactile control center with real-time CPU/RAM/bandwidth resource meters, automated zero-downtime deployment pipelines, and global multi-region edge routing.
+- **Impact & Metrics**:
+  - **99.99% Uptime SLA**: Distributed multi-region failover and automated DDoS mitigation.
+  - **< 180ms Global TTFB**: Static asset distribution and edge caching across global datacenters.
+  - **10,000+ Active Sites Hosted**: Scaled from initial prototype to powering thousands of developers, agencies, and businesses.
+
+### Project 02: Trufin — Fintech Risk Intelligence & Legal Entity Verification
+- **URL**: [/project/trufin](/project/trufin)
+- **External URL**: https://trufin.io
+- **Category**: Fintech Security & Institutional Verification
+- **Role**: Lead Product Designer & Frontend Engineer
+- **Year**: 2025
+- **Technologies**: React, TypeScript, Tailwind CSS, REST API, Search Indexer, Figma
+- **Deliverables**: Institutional Verification Engine, Fintech & Loan Checker, Official License Radar, Community Scam Reporting Center
+- **The Problem**: Proliferation of illegal lending applications and predatory financial scams forging official regulatory licenses without quick, authoritative public verification tools.
+- **Architectural Decisions**: Designed instant search matching official regulatory databases, high-contrast visual safety indicators (Verified Legal vs Dangerous/Illegal), and clear legal compliance guidance.
+- **Impact & Metrics**:
+  - **100% Verified Regulatory Registry**: Connected with authorized financial registries for instant legality confirmation.
+  - **< 0.2s Instant Search**: Ultra-fast fuzzy search engine querying license numbers, application names, and company entities.
+  - **50,000+ Flagged Scam Entities**: Protecting the public by cataloging unlicensed clones, phishing sites, and illegal brokers.
+
+### Project 03: Krigstudio — Interactive Digital Invitation & Event Platform
+- **URL**: [/project/krigstudio](/project/krigstudio)
+- **External URL**: https://krigstudio.com
+- **Category**: Event Web Platform & Digital Invitations
+- **Role**: Creator & Lead Frontend Developer
+- **Year**: 2024
+- **Technologies**: React, Next.js, TypeScript, Tailwind CSS, Framer Motion, Web Audio API, Figma
+- **Deliverables**: Digital Invitation Builder, Interactive RSVP & Wishes Center, Digital Envelopes & QR Transfers, Photo Gallery & Spatial Background Music
+- **The Problem**: Traditional paper invitations are expensive, static, and difficult to manage, while standard digital invitation templates feel generic, bloated with ads, and lack emotional resonance.
+- **Architectural Decisions**: Created an editorial aesthetic with 60 FPS smooth scroll interactions, dynamic guest name personalization, live countdown timers, and RSVP synchronization to messaging channels and spreadsheets.
+- **Impact & Metrics**:
+  - **95% RSVP Confirmation Rate**: Frictionless digital flow making it easy for guests to respond and send blessings within seconds.
+  - **60 FPS Fluid Animation & Spatial Audio**: Immersive background melodies and photo transitions optimized for mobile screens.
+  - **500+ Supported Weddings & Events**: Trusted by couples and event organizers for memorable, lasting first impressions.
+
+---
+
+## 4. Services & Capabilities
+
+1. **Product & UI/UX Design**
+   - Wireframing & User Flows
+   - Figma Design Systems
+   - High-Fidelity Interactive Prototyping
+   - Comprehensive Design & Usability Audits
+
+2. **Frontend Engineering**
+   - React & Next.js Scalable Architecture
+   - Strict TypeScript Codebases
+   - Tailwind CSS & Smooth Motion Animation
+   - Core Web Vitals & Performance Optimization
+
+3. **Design Systems & Tokenization**
+   - Atomic Component Libraries
+   - Design Tokens & Theme Scaling
+   - WCAG AA Accessibility Compliance
+   - Interactive Developer Documentation
+
+4. **Digital Brand Identity & Micro-Interactions**
+   - Visual Identity Guidelines
+   - Bespoke Iconography
+   - Expressive 60 FPS Micro-animations
+   - Tactile Sound and Visual Polish
+
+---
+
+## 5. Frequently Asked Questions (FAQ)
+
+**Q: What is your typical workflow from concept to code?**
+A: Rigorous discovery to dissect core product requirements and constraints, followed by high-fidelity prototyping directly in Figma with refined motion and typography, and finally translation into production-ready TypeScript/React code with mathematical layout consistency.
+
+**Q: How do we collaborate and communicate during a project?**
+A: Asynchronous transparency via Slack/Discord, interactive Figma prototypes for rapid feedback, and continuous staging preview links at each milestone for real-time testing.
+
+**Q: Can you handle design-only or engineering-only contracts?**
+A: Yes. While the primary strength is combining both domains as a hybrid design engineer, independent UI/UX design systems or senior frontend engineering contracts are frequently undertaken.
+
+**Q: What is the typical project timeline?**
+A: Comprehensive product design sprints or frontend MVPs typically take 3 to 6 weeks. Enterprise design systems or full-stack platforms take 2 to 3 months with structured bi-weekly milestones.
+
+**Q: Do you provide post-launch support and documentation?**
+A: Every project concludes with full architectural documentation, design token guides, clean Git commit histories, and a post-launch warranty period for seamless handoffs.
+
+---
+
+## 6. Supported Routes & URLs
+
+- `/` — Home (Editorial portfolio showcase)
+- `/aboutme` — Biography, design journey, and interactive tracer
+- `/projects` — Full works catalog
+- `/project/zylo` — Zylo case study
+- `/project/trufin` — Trufin case study
+- `/project/krigstudio` — Krigstudio case study
+- `/contact` — Inquiries and direct messaging
+- `/llms.txt` — LLM-optimized summary index
+- `/llms-full.txt` — This complete context file
