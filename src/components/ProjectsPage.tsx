@@ -125,12 +125,18 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                   </div>
 
                   {/* Caption & Metadata below */}
-                  <div className="p-4 sm:p-5 space-y-1">
+                  <div className="p-4 sm:p-5 space-y-1.5">
                     <div className="text-xs sm:text-[13px] font-bold text-zinc-950 group-hover:text-blue-700 transition-colors lowercase leading-tight">
                       {project.title}
                     </div>
-                    <div className="text-[11px] text-zinc-400 font-mono-code lowercase">
-                      {project.client}
+                    <div className="flex items-center justify-between text-[11px] text-zinc-400 font-mono-code lowercase">
+                      <span>{project.client}</span>
+                      {project.liveUrl && (
+                        <span className="inline-flex items-center gap-1.5 text-[10.5px] text-zinc-500 group-hover:text-zinc-900 transition-colors">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                          <span>{project.liveUrl.replace(/^https?:\/\//, '')}</span>
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

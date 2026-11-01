@@ -63,6 +63,7 @@ export const MorphingMenu: React.FC<Props> = ({
   onToggleAudio,
   onOpenContact,
   onOpenStory,
+  onOpen404,
   onScrollTo,
   menuLabel,
 }) => {
@@ -285,6 +286,22 @@ export const MorphingMenu: React.FC<Props> = ({
                       leave a thought
                     </button>
                   </motion.div>
+
+                  {onOpen404 && (
+                    <motion.div variants={itemVariants}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNav(onOpen404);
+                        }}
+                        onMouseEnter={() => uiSfx.playHover()}
+                        className="text-left text-[14px] font-mono-code text-zinc-500 hover:text-zinc-200 transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer lowercase w-full pt-1"
+                      >
+                        [404]
+                      </button>
+                    </motion.div>
+                  )}
                 </nav>
 
                 {/* Bottom Row: [ jason ]                     instagram   github */}

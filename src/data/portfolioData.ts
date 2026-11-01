@@ -15,9 +15,10 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       type: 'cloud web hosting & infrastruktur server',
       tech: 'react, next.js, typescript, tailwind css, node.js, docker, edge cdn, figma',
       deliverables: ['Konsol Cloud Hosting', 'Mesin Deployment Git 1-Klik', 'Pengelola Domain & DNS', 'Telemetri Kesehatan Server & CDN'],
-      problem: 'penyedia web hosting tradisional dipenuhi cPanel yang membingungkan, biaya perpanjangan tersembunyi, provisi server lambat, dan pengelolaan domain terpecah-pecah yang membuat kreator dan bisnis frustrasi.',
-      decisions: 'saya merancang pusat kendali hosting yang ramping dan taktil dengan pengukur sumber daya real-time (CPU/RAM/Bandwidth), alur deployment nir-henti otomatis, dan perutean edge multi-kawasan global.',
-      impact: 'zylo berhasil meng-hosting dan memberdayakan lebih dari 10.000 situs web aktif di seluruh dunia dengan rekam jejak uptime 99.99% dan waktu respons TTFB global di bawah 180ms.',
+      problem: 'Banyaknya layanan web hosting di pasaran mematok harga yang sangat mahal, terutama bagi developer pemula yang baru merintis karya. Penyedia tradisional juga kerap menyulitkan pengguna dengan cPanel yang rumit dan biaya perpanjangan tak terduga.',
+      decisions: 'Saya mendirikan Zylo untuk menghadirkan platform hosting berkinerja tinggi dengan harga yang jauh lebih ramah, namun tetap mempertahankan fungsionalitas kelas industri: SSD berkecepatan tinggi, alur deployment nir-henti, dan pusat kendali yang intuitif.',
+      challenge: 'Salah satu kesulitan terbesar saat itu adalah bagaimana cara membuat fitur pencarian dan pengecekan ketersediaan domain secara mandiri. Penyedia pencari domain pihak ketiga mematok harga API yang sangat mahal. Dari situ saya mencari alternatif dan berhasil merekayasa fitur ketersediaan domain sendiri dengan memanfaatkan public API dari protokol RDAP (Registration Data Access Protocol).',
+      impact: 'Zylo sukses dipercaya dan memberdayakan lebih dari 10.000 situs web aktif di seluruh dunia dengan rekam jejak uptime 99.99% dan waktu respons TTFB global di bawah 180ms.',
       achievements: [
         {
           number: '99.99%',
@@ -50,7 +51,7 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       ],
       imageType: 'zylo',
       imageUrl: '/zylo.webp',
-      liveUrl: 'https://zylo.ai',
+      liveUrl: 'https://weplystudio.my.id',
       accentColor: '#6366f1',
       nextProjectId: 'trufin',
       nextProjectTitle: 'trufin | platform verifikasi instansi keuangan & pinjol'
@@ -68,9 +69,10 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       type: 'platform web keamanan fintech & verifikasi',
       tech: 'react, typescript, tailwind css, rest api, search indexer, figma',
       deliverables: ['Mesin Verifikasi Institusi', 'Pengecek Pinjol & Fintech', 'Radar Lisensi Resmi', 'Pusat Pelaporan Penipuan Komunitas'],
-      problem: 'maraknya aplikasi pinjol ilegal dan penipuan keuangan predator yang memalsukan izin resmi regulator serta merugikan masyarakat tanpa adanya alat verifikasi publik yang cepat dan berwenang.',
-      decisions: 'saya merancang pencarian instan yang mencocokkan basis data regulator, indikator visual keamanan kontras tinggi (Legal Terverifikasi vs Berbahaya/Ilegal), dan panduan kepatuhan hukum yang jelas.',
-      impact: 'trufin telah mengindeks dan memverifikasi silang ribuan entitas keuangan, menandai lebih dari 50.000 tautan/aplikasi penipuan, dan memberikan kepastian keamanan finansial kepada ratusan ribu pengguna.',
+      problem: 'Banyak masyarakat masih terjebak menggunakan pinjaman online ilegal tanpa sadar. Data pribadi mereka disalahgunakan oleh pihak tidak bertanggung jawab demi mengambil keuntungan sepihak.',
+      decisions: 'Saya membangun Trufin untuk mengedukasi masyarakat mengenai platform pinjaman mana yang benar-benar aman dan mana yang ilegal. Pipeline pengambilan data ditangani secara semi-otomatis: data diperbarui berkala oleh sistem dan diverifikasi/di-approve manual oleh tim agar akurat. Trufin juga menyediakan Open Source API yang bisa digunakan developer tanpa batasan limit.',
+      challenge: 'Tantangan terbesar saat membangun Trufin adalah membuat AI yang bisa mengecek dan memvalidasi semua data pinjaman online ilegal secara real-time, mengingat saat awal pengembangan sistem kecerdasan buatan masih sangat minim dan tidak seleluasa saat ini.',
+      impact: 'Trufin berhasil mengindeks dan memverifikasi silang ribuan entitas keuangan, menandai lebih dari 50.000 tautan/aplikasi penipuan, dan memberikan kepastian perlindungan finansial bagi masyarakat luas.',
       achievements: [
         {
           number: '100%',
@@ -102,7 +104,7 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       ],
       imageType: 'trufin',
       imageUrl: '/trufin.webp',
-      liveUrl: 'https://trufin.io',
+      liveUrl: 'https://trufin.my.id',
       accentColor: '#10b981',
       nextProjectId: 'krigstudio',
       nextProjectTitle: 'krigstudio | pembuat undangan digital & website acara'
@@ -120,9 +122,10 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       type: 'pembuat undangan digital & platform event',
       tech: 'react, next.js, typescript, tailwind css, framer motion, web audio api, figma',
       deliverables: ['Penyusun Undangan Digital', 'Pusat RSVP & Ucapan Interaktif', 'Amplop Digital & Transfer QR', 'Galeri Foto & Musik Spasial'],
-      problem: 'undangan kertas tradisional mahal, statis, dan sulit dikelola, sementara template undangan digital biasa terasa generik, dipenuhi iklan, dan kurang berkesan untuk momen istimewa hidup.',
-      decisions: 'saya menciptakan estetika editorial dengan interaksi gulir 60fps mulus, personalisasi nama tamu dinamis, hitung mundur langsung, dan sinkronisasi konfirmasi RSVP ke WhatsApp serta spreadsheet.',
-      impact: 'krigstudio telah melayani undangan untuk lebih dari 500 pernikahan dan perayaan, mempertahankan tingkat konfirmasi RSVP 95% dan dipuji karena estetika minimalisnya yang berkelas.',
+      problem: 'Banyaknya platform jasa undangan digital yang ada saat ini masih berbasis template monoton, sehingga sering membuat jenuh melihat banyaknya undangan digital yang sama persis bahkan antar sesama platform.',
+      decisions: 'Saya mendirikan Krigstudio sebagai jasa pembuatan undangan digital berbasis kustomisasi penuh, di mana setiap klien bebas menentukan desain web mereka sendiri beserta fitur-fitur spesifik yang mereka inginkan.',
+      challenge: 'Tantangan terbesar dari membangun Krigstudio adalah lamanya waktu yang dibutuhkan untuk membangun sistem dashboard dan pem-publish-an web undangan secara otomatis, terutama saat merancang dashboard klien yang memungkinkan drag-and-drop dan mengkustom desain web sesuai keinginan mereka.',
+      impact: 'Krigstudio telah melayani undangan untuk lebih dari 500 pernikahan dan perayaan, mempertahankan tingkat konfirmasi RSVP 95% dan dipuji karena estetika kustomnya yang berkelas.',
       achievements: [
         {
           number: '95%',
@@ -154,7 +157,7 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       ],
       imageType: 'krigstudio',
       imageUrl: '/krigstudio.webp',
-      liveUrl: 'https://krigstudio.com',
+      liveUrl: 'https://krigstudio.my.id',
       accentColor: '#09090b',
       nextProjectId: 'zylo',
       nextProjectTitle: 'zylo | platform cloud & website hosting berkinerja tinggi'
@@ -174,9 +177,10 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       type: 'cloud web hosting & server infrastructure',
       tech: 'react, next.js, typescript, tailwind css, node.js, docker, edge cdn, figma',
       deliverables: ['Cloud Hosting Console', '1-Click Git Deployment Engine', 'DNS & Domain Manager', 'Server Health & CDN Telemetry'],
-      problem: 'traditional web hosting providers are cluttered with confusing cPanels, hidden renewal fees, slow server provisioning, and fragmented domain management that frustrate creators and businesses alike.',
-      decisions: 'i architected a streamlined, tactile hosting control center with real-time resource gauges (CPU/RAM/Bandwidth), automated zero-downtime deployment pipelines, and global multi-region edge routing.',
-      impact: 'zylo successfully hosts and powers over 10,000 active websites globally with a 99.99% uptime track record and sub-180ms global Time-To-First-Byte (TTFB) response rates.',
+      problem: 'Many commercial web hosting services charge prohibitively high prices, creating steep barriers for beginner developers looking to publish their first projects. Existing platforms were also burdened with convoluted cPanels and hidden renewal charges.',
+      decisions: 'I founded Zylo to provide high-performance, developer-friendly cloud web hosting at an accessible price point without compromising on enterprise-grade tooling: NVMe SSD storage, zero-downtime deployment pipelines, and a tactile control center.',
+      challenge: 'One of the hardest hurdles was building an independent domain search and availability verification engine. Commercial 3P domain search APIs demanded expensive subscription fees. I solved this by researching the RDAP (Registration Data Access Protocol) specifications and engineering a custom lookup module utilizing public RDAP endpoints directly with zero external API fees.',
+      impact: 'Zylo has successfully hosted and powered over 10,000 active websites globally with a 99.99% uptime track record and sub-180ms global Time-To-First-Byte (TTFB) response rates.',
       achievements: [
         {
           number: '99.99%',
@@ -209,7 +213,7 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       ],
       imageType: 'zylo',
       imageUrl: '/zylo.webp',
-      liveUrl: 'https://zylo.ai',
+      liveUrl: 'https://weplystudio.my.id',
       accentColor: '#6366f1',
       nextProjectId: 'trufin',
       nextProjectTitle: 'trufin | financial institution & pinjol verification platform'
@@ -227,9 +231,10 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       type: 'fintech security & verification web platform',
       tech: 'react, typescript, tailwind css, rest api, search indexer, figma',
       deliverables: ['Institution Verification Engine', 'Pinjol & Fintech Checker', 'Official License Radar', 'Community Fraud Reporting Hub'],
-      problem: 'the surge of illegal lending apps (pinjol ilegal) and predatory financial scams that forge official licenses and mislead consumers without a fast, authoritative, and easy-to-use public verification tool.',
-      decisions: 'i designed an instant search lookup matching regulatory registries, high-contrast visual safety indicators (Verified Legal vs Dangerous/Illegal), and clear guidance on legal compliance standards.',
-      impact: 'trufin indexed and cross-verified thousands of financial entities, flagged over 50,000 fraudulent links/apps, and provided hundreds of thousands of users with immediate financial safety clarity.',
+      problem: 'Countless individuals unknowingly fall victim to predatory, illegal online lending apps (pinjol ilegal). Their sensitive personal data is frequently stolen and exploited by rogue entities for malicious financial gain.',
+      decisions: 'I initiated Trufin to educate and protect the public with an authoritative directory distinguishing licensed financial institutions from dangerous scam operations. Data ingestion is handled semi-automatically: our pipeline continuously crawls data, which is then manually reviewed and approved by our team for absolute accuracy. Trufin also provides an unrestricted, open-source public API for developers.',
+      challenge: 'The most daunting engineering challenge was creating an AI verification engine capable of analyzing and flagging fraudulent loan entities in real-time. When Trufin was first built, modern AI ecosystems and LLMs were not readily accessible, requiring us to design specialized pattern-matching heuristics and automated regulatory rule scrapers.',
+      impact: 'Trufin indexed and cross-verified thousands of financial entities, flagged over 50,000 fraudulent links/apps, and provided hundreds of thousands of users with immediate financial safety clarity.',
       achievements: [
         {
           number: '100%',
@@ -261,7 +266,7 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       ],
       imageType: 'trufin',
       imageUrl: '/trufin.webp',
-      liveUrl: 'https://trufin.io',
+      liveUrl: 'https://trufin.my.id',
       accentColor: '#10b981',
       nextProjectId: 'krigstudio',
       nextProjectTitle: 'krigstudio | digital invitation creator & event website builder'
@@ -279,9 +284,10 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       type: 'digital invitation creator & event platform',
       tech: 'react, next.js, typescript, tailwind css, framer motion, web audio api, figma',
       deliverables: ['Digital Invitation Builder', 'Interactive RSVP & Wishes Hub', 'Digital Envelope & QR Transfer', 'Spatial Photo & Music Gallery'],
-      problem: 'traditional paper invitations are costly, static, and difficult to manage, while standard digital invitation templates often feel generic, cluttered with ads, and uninspiring for special life moments.',
-      decisions: 'i created an editorial, bespoke aesthetic with buttery 60fps scroll interactions, dynamic guest name personalization, live countdown timers, and integrated RSVP sync to WhatsApp and spreadsheet dashboards.',
-      impact: 'krigstudio has delivered invitations for over 500 weddings and celebrations, maintaining a 95% RSVP confirmation rate and praised for its minimalist, memorable aesthetic.',
+      problem: 'Most prevailing digital wedding invitation platforms rely on rigid, repetitive templates. This resulted in an uninspiring landscape where nearly every couple had identical invitations across platforms.',
+      decisions: 'I founded Krigstudio to provide genuinely custom-tailored digital invitations, empowering couples to handpick their own bespoke aesthetic, personalized typography, interactive timelines, and custom features.',
+      challenge: 'The most demanding undertaking was developing the automated publishing pipeline and interactive client dashboard. Engineering a drag-and-drop client interface that allowed couples to personalize visual elements dynamically without breaking responsiveness required extensive frontend architecture exploration.',
+      impact: 'Krigstudio has delivered invitations for over 500 weddings and celebrations, maintaining a 95% RSVP confirmation rate and praised for its minimalist, memorable aesthetic.',
       achievements: [
         {
           number: '95%',
@@ -313,7 +319,7 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       ],
       imageType: 'krigstudio',
       imageUrl: '/krigstudio.webp',
-      liveUrl: 'https://krigstudio.com',
+      liveUrl: 'https://krigstudio.my.id',
       accentColor: '#09090b',
       nextProjectId: 'zylo',
       nextProjectTitle: 'zylo | high-performance website hosting & cloud platform'
@@ -333,8 +339,9 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       type: 'cloud web-hosting & server-infrastruktur',
       tech: 'react, next.js, typescript, tailwind css, node.js, docker, edge cdn, figma',
       deliverables: ['Cloud-Hosting-Konsole', '1-Klick Git-Deployment-Engine', 'DNS- & Domain-Manager', 'Server-Health- & CDN-Telemetrie'],
-      problem: 'Herkömmliche Hosting-Anbieter sind überladen mit unübersichtlichen cPanels, versteckten Verlängerungskosten und langsamen Server-Bereitstellungen, die Entwickler und Unternehmen frustrieren.',
-      decisions: 'Entwurf eines minimalistischen Kontrollzentrums mit Echtzeit-Ressourcenanzeigen (CPU/RAM/Bandbreite), automatisierten Zero-Downtime-Pipelines und globalem Multi-Region-Edge-Routing.',
+      problem: 'Viele kommerzielle Webhosting-Dienste verlangen überhöhte Preise, was insbesondere für Einsteiger-Entwickler eine enorme Hürde darstellt. Zudem waren bestehende Plattformen mit unübersichtlichen cPanels und versteckten Verlängerungsgebühren belastet.',
+      decisions: 'Ich habe Zylo gegründet, um Entwicklern hochperformantes, budgetfreundliches Cloud-Webhosting mit vollem Leistungsumfang zu bieten: blitzschnelle NVMe-SSDs, automatisierte Zero-Downtime-Pipelines und ein intuitives Kontrollzentrum.',
+      challenge: 'Eine der größten technischen Hürden war die Entwicklung einer unabhängigen Domain-Suche und -Verfügbarkeitsprüfung. Kommerzielle Drittanbieter-APIs waren extrem kostspielig. Ich löste dies durch den Einsatz der öffentlichen RDAP-API (Registration Data Access Protocol), wodurch eine eigenständige Abfrage ohne teure API-Gebühren realisiert wurde.',
       impact: 'zylo hostet erfolgreich über 10.000 aktive Websites weltweit mit einer 99,99% Uptime-Erfolgsquote und weltweiten TTFB-Antwortzeiten von unter 180 ms.',
       achievements: [
         {
@@ -360,6 +367,7 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
         { id: 'zylo-04', title: 'High-Speed Edge Shield', caption: 'Status globaler Edge-Knoten, intelligente Caching-Regeln und DDoS-Schutz', type: 'darkmode' },
         { id: 'zylo-05', title: '1-Klick-Deploy & Webhooks', caption: 'Git-Repository-Webhooks, Build-Logs und automatische Rollback-Punkte', type: 'hub' }
       ],
+      screenImages: ['/zylo1.png', '/zylo2.png', '/zylo3.png', '/zylo.png', '/zylo.webp'],
       metrics: [
         { label: 'Uptime SLA', value: '99.99%' },
         { label: 'Global TTFB', value: '< 180ms' },
@@ -367,7 +375,7 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       ],
       imageType: 'zylo',
       imageUrl: '/zylo.webp',
-      liveUrl: 'https://zylo.ai',
+      liveUrl: 'https://weplystudio.my.id',
       accentColor: '#6366f1',
       nextProjectId: 'trufin',
       nextProjectTitle: 'trufin | verifizierungsplattform für finanzinstitute & online-kredite'
@@ -385,8 +393,9 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       type: 'fintech-sicherheits- & verifizierungsplattform',
       tech: 'react, typescript, tailwind css, rest api, search indexer, figma',
       deliverables: ['Instituts-Verifizierungs-Engine', 'Fintech- & Kredit-Checker', 'Offizieller Lizenz-Radar', 'Community-Betrugs-Meldeportal'],
-      problem: 'Die Zunahme illegaler Kredit-Apps und räuberischer Finanzbetrügereien, die offizielle Lizenzen fälschen, ohne dass Bürgern ein schnelles und zuverlässiges Prüfwerkzeug zur Verfügung steht.',
-      decisions: 'Entwicklung einer blitzschnellen Suche mit Behörden-Abgleich, kontrastreichen Sicherheitsindikatoren (Verifiziert vs Gefährlich) und klaren Richtlinien.',
+      problem: 'Unzählige Menschen geraten ahnungslos an illegale Online-Kredit-Apps (Pinjol Ilegal). Ihre sensiblen persönlichen Daten werden gestohlen und von skrupellosen Akteuren zur illegalen Bereicherung missbraucht.',
+      decisions: 'Ich habe Trufin ins Leben gerufen, um die Öffentlichkeit aufzuklären und eine verlässliche Plattform zu schaffen, die lizenzierte Finanzinstitute von betrügerischen Apps unterscheidet. Die Datenerfassung erfolgt halbautomatisch: Unser System aktualisiert Daten fortlaufend, woraufhin jede Information vor Veröffentlichung manuell durch unser Team verifiziert wird. Zudem bietet Trufin eine unbegrenzte Open-Source-API für Entwickler.',
+      challenge: 'Die größte technische Herausforderung bestand in der Entwicklung einer KI zur Echtzeit-Erkennung und Validierung illegaler Kredit-Apps, da zum Entstehungszeitpunkt von Trufin moderne KI- und LLM-Ökosysteme noch stark limitiert und kaum zugänglich waren.',
       impact: 'trufin hat Tausende Finanzunternehmen abgeglichen, über 50.000 betrügerische Links markiert und Hunderttausenden Nutzern finanzielle Sicherheit verschafft.',
       achievements: [
         {
@@ -419,7 +428,7 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       ],
       imageType: 'trufin',
       imageUrl: '/trufin.webp',
-      liveUrl: 'https://trufin.io',
+      liveUrl: 'https://trufin.my.id',
       accentColor: '#10b981',
       nextProjectId: 'krigstudio',
       nextProjectTitle: 'krigstudio | plattform für digitale einladungen & event-websites'
@@ -437,8 +446,9 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       type: 'plattform für digitale einladungen & events',
       tech: 'react, next.js, typescript, tailwind css, framer motion, web audio api, figma',
       deliverables: ['Digitaler Einladungs-Builder', 'Interaktiver RSVP- & Gästebuch-Hub', 'Digitaler Umschlag & QR-Transfer', 'Foto- & Musik-Galerie'],
-      problem: 'Klassische Papiereinladungen sind teuer und unpraktisch, während Standard-Online-Vorlagen oft generisch, werbeüberladen und wenig emotional wirken.',
-      decisions: 'Gestaltung einer zeitlosen Ästhetik mit butterweichen 60fps-Interaktionen, dynamischer Gästepersonalisierung, Live-Countdowns und automatischer RSVP-Synchronisierung.',
+      problem: 'Die meisten Plattformen für digitale Einladungen basieren auf starren, sich ständig wiederholenden Vorlagen. Dies führte zu einer monotonen Landschaft identischer Einladungen über verschiedene Anbieter hinweg.',
+      decisions: 'Ich habe Krigstudio gegründet, um vollständig maßgeschneiderte digitale Einladungen anzubieten, bei denen Kunden das Webdesign und individuelle Wunschfunktionen exakt nach ihren Vorstellungen selbst bestimmen können.',
+      challenge: 'Die größte technische Herausforderung war die langwierige Entwicklung des Dashboards und der automatisierten Veröffentlichungspipeline – insbesondere ein responsives Drag-and-Drop-System für Kunden ohne Programmierkenntnisse zu konzipieren.',
       impact: 'krigstudio hat bereits Einladungen für über 500 Hochzeiten bereitgestellt, bei einer 95% RSVP-Rückmeldequote und herausragendem Feedback.',
       achievements: [
         {
@@ -471,7 +481,7 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       ],
       imageType: 'krigstudio',
       imageUrl: '/krigstudio.webp',
-      liveUrl: 'https://krigstudio.com',
+      liveUrl: 'https://krigstudio.my.id',
       accentColor: '#09090b',
       nextProjectId: 'zylo',
       nextProjectTitle: 'zylo | hochperformantes web-hosting & cloud-plattform'
@@ -491,8 +501,9 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       type: 'クラウドWebホスティング & サーバー基盤',
       tech: 'react, next.js, typescript, tailwind css, node.js, docker, edge cdn, figma',
       deliverables: ['クラウドホスティング管理コンソール', '1クリックGitデプロイエンジン', 'DNS & ドメイン管理機能', 'サーバーヘルス & CDNテレメトリ'],
-      problem: '従来のWebホスティングは複雑な管理画面、不透明な更新費用、遅いサーバー構築など、開発者や企業にとって多くの摩擦が存在していました。',
-      decisions: 'リアルタイムリソースゲージ（CPU/RAM/帯域）、ゼロダウンタイムの自動デプロイパイプライン、グローバルエッジルーティングを備えた洗練されたコントロールセンターを設計。',
+      problem: '多くの商用Webホスティングは価格が高額で、特に初学者の開発者が最初のWebサイトを公開する際の大きな経済的障壁となっていました。また、複雑なcPanelや不透明な更新費用も課題でした。',
+      decisions: '開発者に寄り添う親しみやすい価格設定でありながら、NVMe SSDストレージ、ダウンタイムなしの自動デプロイ、直感的な管理コンソールを備えた高品質なクラウドホスティングとしてZyloを創業・構築しました。',
+      challenge: '最大の難関は、独立したドメイン検索・空き状況確認機能の実装でした。商用の外部ドメイン検索APIは利用料が非常に高価だったため、公開RDAP（Registration Data Access Protocol）APIを活用した独自検証エンジンを研究・開発し、外部費用ゼロでの即時判定を実現しました。',
       impact: '世界中で10,000件以上のアクティブなWebサイトを安定運用し、稼働率99.99%、グローバルTTFB応答時間180ms未満を達成。',
       achievements: [
         {
@@ -518,6 +529,7 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
         { id: 'zylo-04', title: '高速エッジシールド', caption: 'グローバルエッジノード状態、インテリジェントキャッシュポリシー、DDoS防御', type: 'darkmode' },
         { id: 'zylo-05', title: '1クリックデプロイ & Webhook', caption: 'Gitリポジトリ連携、ビルドログ、自動ロールバックポイント', type: 'hub' }
       ],
+      screenImages: ['/zylo1.png', '/zylo2.png', '/zylo3.png', '/zylo.png', '/zylo.webp'],
       metrics: [
         { label: '稼働率 SLA', value: '99.99%' },
         { label: 'グローバル TTFB', value: '< 180ms' },
@@ -525,7 +537,7 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       ],
       imageType: 'zylo',
       imageUrl: '/zylo.webp',
-      liveUrl: 'https://zylo.ai',
+      liveUrl: 'https://weplystudio.my.id',
       accentColor: '#6366f1',
       nextProjectId: 'trufin',
       nextProjectTitle: 'trufin | 金融機関・融資事業者検証プラットフォーム'
@@ -543,8 +555,9 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       type: 'Fintechセキュリティ & 検証Webプラットフォーム',
       tech: 'react, typescript, tailwind css, rest api, search indexer, figma',
       deliverables: ['機関検証エンジン', '融資・Fintechチェッカー', '公式ライセンスレーダー', 'コミュニティ不正通報ハブ'],
-      problem: '公式認可を偽装した違法融資アプリや金融詐欺が横行する中、消費者が迅速かつ確実に真偽を確認できる公的ツールが不足していました。',
-      decisions: '規制当局の登録データベースと完全照合する高速検索、高コントラストな安全指標バッジ（正規認可済み vs 危険/違法）、明快な法令ガイドラインを設計。',
+      problem: '多くの人々が未認可の違法融資アプリ（違法オンラインローン/pinjol）の被害に遭い、気付かぬうちに個人情報を不正利用され悪質な搾取を受けている実態がありました。どの金融プラットフォームが安全で適法かを啓発する必要がありました。',
+      decisions: '合法な認可金融機関と違法融資アプリを即座に判別できるTrufinを設立しました。データ収集は半自動化パイプラインで行われ、システムが定期更新したデータをチームが目視確認・手動承認することで100%の正確性を維持。さらに開発者向けに無制限のオープンソースAPIも提供しています。',
+      challenge: 'Trufin開発当初は現代のように柔軟な生成AIやLLMが存在しなかったため、悪質・違法な融資業者の特徴やパターンをリアルタイムで自動検知・検証するAI判定エンジンの構築が極めて困難でした。',
       impact: '数千社におよぶ金融事業者のクロス照合を実施し、5万件以上の不正アプリ・リンクを検知・警告。数十万人のユーザーの資産安全に貢献。',
       achievements: [
         {
@@ -577,7 +590,7 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       ],
       imageType: 'trufin',
       imageUrl: '/trufin.webp',
-      liveUrl: 'https://trufin.io',
+      liveUrl: 'https://trufin.my.id',
       accentColor: '#10b981',
       nextProjectId: 'krigstudio',
       nextProjectTitle: 'krigstudio | デジタル招待状クリエイター & イベントWebビルダー'
@@ -595,8 +608,9 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       type: 'デジタル招待状制作 & イベントプラットフォーム',
       tech: 'react, next.js, typescript, tailwind css, framer motion, web audio api, figma',
       deliverables: ['招待状ビルダー', 'インタラクティブRSVP & 芳名録ハブ', 'デジタルご祝儀 & QR送金', 'フォト & BGMギャラリー'],
-      problem: '従来の紙の招待状はコストが高く出欠管理が困難で、既存のWeb招待状テンプレートは広告が多く洗練さに欠けていました。',
-      decisions: '60fpsの心地よいスクロール、ゲスト名の動的パーソナライズ、リアルタイムカウントダウン、WhatsApp連携によるスムーズな出欠管理を実現。',
+      problem: '多くのデジタル招待状サービスは画一的なテンプレートに依存しており、どのプラットフォームを使っても似たような招待状ばかりでオリジナリティが失われていました。',
+      decisions: 'テンプレートの枠を超え、新郎新婦やイベント主催者がWebデザインや必要な機能を自由にオーダーメイド・カスタマイズできるデジタル招待状制作サービスとしてKrigstudioを創設しました。',
+      challenge: '最大の挑戦は、ドラッグ＆ドロップで直感的にデザインをカスタマイズでき、完成した招待状Webサイトを瞬時に自動公開できる専用クライアントダッシュボードの設計とパイプライン構築でした。',
       impact: '500件以上の結婚式やイベントで導入され、95%の高いRSVP回答率を維持。洗練されたミニマルな美学で高い評価を獲得。',
       achievements: [
         {
@@ -629,7 +643,7 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       ],
       imageType: 'krigstudio',
       imageUrl: '/krigstudio.webp',
-      liveUrl: 'https://krigstudio.com',
+      liveUrl: 'https://krigstudio.my.id',
       accentColor: '#09090b',
       nextProjectId: 'zylo',
       nextProjectTitle: 'zylo | 高性能Webホスティング & クラウドプラットフォーム'
@@ -1211,9 +1225,10 @@ export const TRANSLATIONS = {
     messageSentDesc: 'saya akan segera menghubungi anda kembali. terima kasih atas waktunya.',
     sendAnother: 'kirim pesan baru',
     allRights: 'hak cipta dilindungi undang-undang',
-    notFoundTitle: '[404]',
+    notFoundTitle: 'i’m not here.',
     notFoundDesc: 'halaman ini tidak ada. mungkin memang tidak pernah ada.',
     backHome: 'kembali ke beranda',
+    backToStart: 'kembali ke awal',
     backToWorks: '• kembali ke karya',
     clickToZoom: 'klik untuk memperbesar',
     nextWork: 'karya selanjutnya •',
@@ -1278,9 +1293,10 @@ export const TRANSLATIONS = {
     messageSentDesc: 'i will get back to you as soon as possible. thank you for reaching out.',
     sendAnother: 'send another message',
     allRights: 'all rights reserved',
-    notFoundTitle: '[404]',
+    notFoundTitle: 'i’m not here.',
     notFoundDesc: "this page doesn't exist. maybe it never did.",
     backHome: 'back to home',
+    backToStart: 'back to start',
     backToWorks: '• back to works',
     clickToZoom: 'click to zoom screen',
     nextWork: 'next work •',
@@ -1345,9 +1361,10 @@ export const TRANSLATIONS = {
     messageSentDesc: 'ich werde mich so schnell wie möglich bei ihnen melden. vielen dank!',
     sendAnother: 'weitere nachricht senden',
     allRights: 'alle rechte vorbehalten',
-    notFoundTitle: '[404]',
+    notFoundTitle: 'i’m not here.',
     notFoundDesc: 'diese seite existiert nicht. vielleicht hat sie nie existiert.',
     backHome: 'zurück zur startseite',
+    backToStart: 'zurück zum anfang',
     backToWorks: '• zurück zu den werken',
     clickToZoom: 'klicken zum vergrößern',
     nextWork: 'nächstes werk •',
@@ -1412,9 +1429,10 @@ export const TRANSLATIONS = {
     messageSentDesc: '確認次第、折り返しご連絡いたします。お問い合わせありがとうございます。',
     sendAnother: '別のメッセージを送信する',
     allRights: 'all rights reserved',
-    notFoundTitle: '[404]',
+    notFoundTitle: 'i’m not here.',
     notFoundDesc: 'お探しのページは見つかりませんでした。',
     backHome: 'ホームに戻る',
+    backToStart: '最初に戻る',
     backToWorks: '• 実績一覧へ戻る',
     clickToZoom: 'クリックして拡大',
     nextWork: '次の実績 •',

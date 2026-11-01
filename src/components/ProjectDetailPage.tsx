@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Project, Language } from '../types';
 import { ScrollReveal } from './ScrollReveal';
-import { ArrowLeft, ArrowRight, Maximize2, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowUpRight, Maximize2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { uiSfx } from '../utils/audio';
 
 interface Props {
@@ -171,8 +171,9 @@ export const ProjectDetailPage: React.FC<Props> = ({
       role: '[peran]',
       type: '[tipe]',
       tech: '[teknologi]',
-      problem: '[masalah]',
-      decisions: '[keputusan]',
+      problem: '[latar belakang & masalah]',
+      decisions: '[solusi & keputusan]',
+      challenge: '[tantangan teknis]',
       impact: '[dampak]',
       achievements: '[pencapaian]',
       screens: '[screens]',
@@ -187,8 +188,9 @@ export const ProjectDetailPage: React.FC<Props> = ({
       role: '[role]',
       type: '[type]',
       tech: '[tech]',
-      problem: '[problem]',
-      decisions: '[decisions]',
+      problem: '[problem & background]',
+      decisions: '[solutions & decisions]',
+      challenge: '[technical challenge]',
       impact: '[impact]',
       achievements: '[achievements]',
       screens: '[screens]',
@@ -203,8 +205,9 @@ export const ProjectDetailPage: React.FC<Props> = ({
       role: '[rolle]',
       type: '[typ]',
       tech: '[technologie]',
-      problem: '[problem]',
-      decisions: '[entscheidungen]',
+      problem: '[problem & hintergrund]',
+      decisions: '[lösungen & entscheidungen]',
+      challenge: '[technische herausforderung]',
       impact: '[wirkung]',
       achievements: '[erfolge]',
       screens: '[screens]',
@@ -219,8 +222,9 @@ export const ProjectDetailPage: React.FC<Props> = ({
       role: '[担当領域]',
       type: '[カテゴリ]',
       tech: '[技術スタック]',
-      problem: '[課題]',
-      decisions: '[設計方針]',
+      problem: '[背景と課題]',
+      decisions: '[設計方針と解決策]',
+      challenge: '[技術的挑戦]',
       impact: '[成果・影響]',
       achievements: '[主要実績]',
       screens: '[screens]',
@@ -305,6 +309,24 @@ export const ProjectDetailPage: React.FC<Props> = ({
             </p>
           </ScrollReveal>
 
+          {/* Live Website Button */}
+          {project.liveUrl && (
+            <ScrollReveal delay={120} distance={15}>
+              <div className="pt-2 flex items-center gap-3">
+                <a
+                  href={project.liveUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-1.5 text-white font-sans text-xs sm:text-[13px] rounded-[8px] sm:rounded-[9px] shadow-xs hover:shadow-sm transition-all duration-300 cursor-pointer select-none bg-zinc-800 hover:bg-black active:scale-95"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  <span className="font-medium lowercase">{project.liveUrl.replace(/^https?:\/\//, '')}</span>
+                  <ArrowUpRight className="w-3.5 h-3.5 text-zinc-300 ml-0.5" />
+                </a>
+              </div>
+            </ScrollReveal>
+          )}
+
           {/* 4 Metadata Columns */}
           <ScrollReveal delay={150} distance={20}>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-8 sm:pt-10">
@@ -348,7 +370,7 @@ export const ProjectDetailPage: React.FC<Props> = ({
         </section>
 
         {/* ------------------------------------------------------------- */}
-        {/* NARRATIVE SECTIONS: Problem, Decisions, Impact */}
+        {/* NARRATIVE SECTIONS: Problem, Decisions, Challenge, Impact */}
         {/* ------------------------------------------------------------- */}
         <section className="space-y-12 sm:space-y-16 pt-12 sm:pt-16">
           {/* [problem] */}
@@ -357,7 +379,7 @@ export const ProjectDetailPage: React.FC<Props> = ({
               <div className="md:col-span-3 text-xs sm:text-[13px] font-mono-code text-zinc-400 lowercase">
                 {l.problem}
               </div>
-              <div className="md:col-span-9 text-xs sm:text-[13px] text-zinc-700 leading-relaxed max-w-2xl lowercase">
+              <div className="md:col-span-9 text-xs sm:text-[13px] text-zinc-700 leading-relaxed max-w-2xl">
                 {project.problem}
               </div>
             </div>
@@ -369,11 +391,25 @@ export const ProjectDetailPage: React.FC<Props> = ({
               <div className="md:col-span-3 text-xs sm:text-[13px] font-mono-code text-zinc-400 lowercase">
                 {l.decisions}
               </div>
-              <div className="md:col-span-9 text-xs sm:text-[13px] text-zinc-700 leading-relaxed max-w-2xl lowercase">
+              <div className="md:col-span-9 text-xs sm:text-[13px] text-zinc-700 leading-relaxed max-w-2xl">
                 {project.decisions}
               </div>
             </div>
           </ScrollReveal>
+
+          {/* [challenge] */}
+          {project.challenge && (
+            <ScrollReveal delay={175} distance={20}>
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-16 items-start">
+                <div className="md:col-span-3 text-xs sm:text-[13px] font-mono-code text-zinc-400 lowercase">
+                  {l.challenge}
+                </div>
+                <div className="md:col-span-9 text-xs sm:text-[13px] text-zinc-700 leading-relaxed max-w-2xl">
+                  {project.challenge}
+                </div>
+              </div>
+            </ScrollReveal>
+          )}
 
           {/* [impact] */}
           <ScrollReveal delay={200} distance={20}>
@@ -381,7 +417,7 @@ export const ProjectDetailPage: React.FC<Props> = ({
               <div className="md:col-span-3 text-xs sm:text-[13px] font-mono-code text-zinc-400 lowercase">
                 {l.impact}
               </div>
-              <div className="md:col-span-9 text-xs sm:text-[13px] text-zinc-700 leading-relaxed max-w-2xl lowercase">
+              <div className="md:col-span-9 text-xs sm:text-[13px] text-zinc-700 leading-relaxed max-w-2xl">
                 {project.impact}
               </div>
             </div>
@@ -482,7 +518,7 @@ export const ProjectDetailPage: React.FC<Props> = ({
         {/* ------------------------------------------------------------- */}
         {/* BOTTOM NAVIGATION: Back to works & Next Project */}
         {/* ------------------------------------------------------------- */}
-        <section className="pt-12 sm:pt-16 flex flex-col sm:flex-row items-center justify-between gap-6">
+        <section className="pt-12 sm:pt-16 flex flex-col sm:flex-row items-center justify-between gap-6 border-t border-zinc-100">
           <button
             onClick={onBack}
             className="group flex items-center gap-2 text-xs sm:text-[13px] font-mono-code text-zinc-600 hover:text-black transition-colors cursor-pointer"
@@ -490,6 +526,19 @@ export const ProjectDetailPage: React.FC<Props> = ({
             <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
             <span>{l.backToWorks}</span>
           </button>
+
+          {project.liveUrl && (
+            <a
+              href={project.liveUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-1.5 text-white font-sans text-xs sm:text-[13px] rounded-[8px] sm:rounded-[9px] shadow-xs hover:shadow-sm transition-all duration-300 cursor-pointer select-none bg-zinc-800 hover:bg-black active:scale-95"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span className="font-medium lowercase">{project.liveUrl.replace(/^https?:\/\//, '')}</span>
+              <ArrowUpRight className="w-3.5 h-3.5 text-zinc-300 ml-0.5" />
+            </a>
+          )}
 
           {nextProject && (
             <button

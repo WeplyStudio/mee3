@@ -22,6 +22,7 @@ import { InteractiveBrandName } from './components/InteractiveBrandName';
 import { EncryptedPrinciple } from './components/EncryptedPrinciple';
 import { LiveClock } from './components/LiveClock';
 import { ImageTooltip, getProjectTooltipText } from './components/ImageTooltip';
+import { AnimatedStatCard } from './components/AnimatedStatCard';
 import { ambientSound, setupGlobalUISFX, uiSfx } from './utils/audio';
 import { Language, Project } from './types';
 
@@ -577,7 +578,7 @@ export default function App() {
       {/* ------------------------------------------------------------- */}
       {/* MAIN CONTENT LAYER (SLIDES UP OVER STICKY FOOTER REVEAL) */}
       {/* ------------------------------------------------------------- */}
-      <div className="relative z-10 bg-white pb-16 min-h-screen">
+      <div className={`relative z-10 bg-white min-h-screen ${currentPage === '404' ? 'pb-0 flex flex-col justify-center' : 'pb-16'}`}>
         <Suspense fallback={<div className="min-h-screen bg-white" />}>
           {currentPage === 'home' ? (
             <>
@@ -918,7 +919,7 @@ export default function App() {
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-zinc-300 hover:border-zinc-900 bg-white hover:bg-zinc-50 text-zinc-800 hover:text-black text-xs font-medium transition-all shadow-xs active:scale-95 cursor-pointer lowercase"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-zinc-900"></span>
-                  <span>• {t.discussProject}</span>
+                  <span>{t.discussProject}</span>
                 </button>
               </div>
             </ScrollReveal>
@@ -946,20 +947,7 @@ export default function App() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 text-left">
             {currentStats.map((stat, idx) => (
               <ScrollReveal key={stat.number + stat.label} delay={idx * 80} distance={20}>
-                <div className="p-6 rounded-2xl bg-zinc-50/80 border border-zinc-200/80 hover:border-zinc-400 hover:bg-zinc-50 transition-all duration-300 space-y-2 group">
-                  <div className="flex items-baseline gap-1 text-3xl sm:text-4xl font-extrabold text-zinc-900 tracking-tight font-mono-code">
-                    <span>{stat.number}</span>
-                    <span className="text-blue-600 group-hover:translate-x-0.5 transition-transform">{stat.suffix}</span>
-                  </div>
-                  <div className="space-y-0.5">
-                    <div className="text-xs font-mono-code text-zinc-900 font-bold lowercase">
-                      {stat.label}
-                    </div>
-                    <div className="text-[11px] text-zinc-500 leading-relaxed lowercase">
-                      {stat.sublabel}
-                    </div>
-                  </div>
-                </div>
+                <AnimatedStatCard stat={stat} idx={idx} />
               </ScrollReveal>
             ))}
           </div>
@@ -1151,7 +1139,7 @@ export default function App() {
       {/* ------------------------------------------------------------- */}
       {/* UNIFIED STICKY ANIMATED FOOTER (REVEALED FROM UNDERNEATH) */}
       {/* ------------------------------------------------------------- */}
-      {currentPage !== 'admin' && (
+      {currentPage !== 'admin' && currentPage !== '404' && (
         <Footer
           footerProgress={footerProgress}
           lang={lang}
@@ -1206,7 +1194,7 @@ export default function App() {
       {/* ------------------------------------------------------------- */}
       {/* BOTTOM BLACK SCROLL PROGRESS BAR */}
       {/* ------------------------------------------------------------- */}
-      {currentPage !== 'admin' && <BottomScrollProgress currentPage={currentPage} />}
+      {currentPage !== 'admin' && currentPage !== '404' && <BottomScrollProgress currentPage={currentPage} />}
 
       {/* ------------------------------------------------------------- */}
       {/* MOTION CURTAIN BLINDS PAGE TRANSITION OVERLAY */}

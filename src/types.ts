@@ -31,6 +31,7 @@ export interface Project {
   problem: string;
   decisions: string;
   impact: string;
+  challenge?: string;
   achievements: ProjectAchievement[];
   screens: ProjectScreen[];
   screenImages?: string[];
