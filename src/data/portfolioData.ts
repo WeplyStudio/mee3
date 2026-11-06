@@ -16,7 +16,7 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       tech: 'react, next.js, typescript, tailwind css, node.js, docker, edge cdn, figma',
       deliverables: ['Konsol Cloud Hosting', 'Mesin Deployment Git 1-Klik', 'Pengelola Domain & DNS', 'Telemetri Kesehatan Server & CDN'],
       problem: 'Banyaknya layanan web hosting di pasaran mematok harga yang sangat mahal, terutama bagi developer pemula yang baru merintis karya. Penyedia tradisional juga kerap menyulitkan pengguna dengan cPanel yang rumit dan biaya perpanjangan tak terduga.',
-      decisions: 'Saya mendirikan Zylo untuk menghadirkan platform hosting berkinerja tinggi dengan harga yang jauh lebih ramah, namun tetap mempertahankan fungsionalitas kelas industri: SSD berkecepatan tinggi, alur deployment nir-henti, dan pusat kendali yang intuitif.',
+      decisions: 'Saya mulai membangun Zylo sejak 3 tahun terakhir (saat kelas 2 SMP) dengan bekerja sama bersama perusahaan penyedia infrastruktur untuk menghadirkan platform website hosting berkinerja tinggi dengan harga terjangkau, lengkap dengan SSD berkecepatan tinggi, alur deployment nir-henti, dan pusat kendali yang intuitif.',
       challenge: 'Salah satu kesulitan terbesar saat itu adalah bagaimana cara membuat fitur pencarian dan pengecekan ketersediaan domain secara mandiri. Penyedia pencari domain pihak ketiga mematok harga API yang sangat mahal. Dari situ saya mencari alternatif dan berhasil merekayasa fitur ketersediaan domain sendiri dengan memanfaatkan public API dari protokol RDAP (Registration Data Access Protocol).',
       impact: 'Zylo sukses dipercaya dan memberdayakan lebih dari 10.000 situs web aktif di seluruh dunia dengan rekam jejak uptime 99.99% dan waktu respons TTFB global di bawah 180ms.',
       achievements: [
@@ -178,7 +178,7 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       tech: 'react, next.js, typescript, tailwind css, node.js, docker, edge cdn, figma',
       deliverables: ['Cloud Hosting Console', '1-Click Git Deployment Engine', 'DNS & Domain Manager', 'Server Health & CDN Telemetry'],
       problem: 'Many commercial web hosting services charge prohibitively high prices, creating steep barriers for beginner developers looking to publish their first projects. Existing platforms were also burdened with convoluted cPanels and hidden renewal charges.',
-      decisions: 'I founded Zylo to provide high-performance, developer-friendly cloud web hosting at an accessible price point without compromising on enterprise-grade tooling: NVMe SSD storage, zero-downtime deployment pipelines, and a tactile control center.',
+      decisions: 'I started building Zylo over the last 3 years (starting in 8th grade / middle school) in partnership with infrastructure provider companies to deliver high-performance, developer-friendly cloud web hosting at an accessible price point: NVMe SSD storage, zero-downtime deployment pipelines, and a tactile control center.',
       challenge: 'One of the hardest hurdles was building an independent domain search and availability verification engine. Commercial 3P domain search APIs demanded expensive subscription fees. I solved this by researching the RDAP (Registration Data Access Protocol) specifications and engineering a custom lookup module utilizing public RDAP endpoints directly with zero external API fees.',
       impact: 'Zylo has successfully hosted and powered over 10,000 active websites globally with a 99.99% uptime track record and sub-180ms global Time-To-First-Byte (TTFB) response rates.',
       achievements: [
@@ -340,7 +340,7 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       tech: 'react, next.js, typescript, tailwind css, node.js, docker, edge cdn, figma',
       deliverables: ['Cloud-Hosting-Konsole', '1-Klick Git-Deployment-Engine', 'DNS- & Domain-Manager', 'Server-Health- & CDN-Telemetrie'],
       problem: 'Viele kommerzielle Webhosting-Dienste verlangen überhöhte Preise, was insbesondere für Einsteiger-Entwickler eine enorme Hürde darstellt. Zudem waren bestehende Plattformen mit unübersichtlichen cPanels und versteckten Verlängerungsgebühren belastet.',
-      decisions: 'Ich habe Zylo gegründet, um Entwicklern hochperformantes, budgetfreundliches Cloud-Webhosting mit vollem Leistungsumfang zu bieten: blitzschnelle NVMe-SSDs, automatisierte Zero-Downtime-Pipelines und ein intuitives Kontrollzentrum.',
+      decisions: 'Ich habe Zylo in den letzten 3 Jahren (ab der 8. Klasse / Middle School) in Zusammenarbeit mit Infrastruktur-Partnerunternehmen aufgebaut, um Entwicklern hochperformantes, preiswertes Cloud-Webhosting mit vollem Leistungsumfang zu bieten: blitzschnelle NVMe-SSDs, automatisierte Zero-Downtime-Pipelines und ein intuitives Kontrollzentrum.',
       challenge: 'Eine der größten technischen Hürden war die Entwicklung einer unabhängigen Domain-Suche und -Verfügbarkeitsprüfung. Kommerzielle Drittanbieter-APIs waren extrem kostspielig. Ich löste dies durch den Einsatz der öffentlichen RDAP-API (Registration Data Access Protocol), wodurch eine eigenständige Abfrage ohne teure API-Gebühren realisiert wurde.',
       impact: 'zylo hostet erfolgreich über 10.000 aktive Websites weltweit mit einer 99,99% Uptime-Erfolgsquote und weltweiten TTFB-Antwortzeiten von unter 180 ms.',
       achievements: [
@@ -502,7 +502,7 @@ export const PROJECTS_BY_LANG: Record<Language, Project[]> = {
       tech: 'react, next.js, typescript, tailwind css, node.js, docker, edge cdn, figma',
       deliverables: ['クラウドホスティング管理コンソール', '1クリックGitデプロイエンジン', 'DNS & ドメイン管理機能', 'サーバーヘルス & CDNテレメトリ'],
       problem: '多くの商用Webホスティングは価格が高額で、特に初学者の開発者が最初のWebサイトを公開する際の大きな経済的障壁となっていました。また、複雑なcPanelや不透明な更新費用も課題でした。',
-      decisions: '開発者に寄り添う親しみやすい価格設定でありながら、NVMe SSDストレージ、ダウンタイムなしの自動デプロイ、直感的な管理コンソールを備えた高品質なクラウドホスティングとしてZyloを創業・構築しました。',
+      decisions: '3年前の中学2年生（8th grade）の時からインフラ提供企業と提携してZyloを構築し、手頃な価格設定でありながらNVMe SSDストレージ、ダウンタイムなしの自動デプロイ、直感的な管理コンソールを備えた高品質なクラウドホスティングを実現しました。',
       challenge: '最大の難関は、独立したドメイン検索・空き状況確認機能の実装でした。商用の外部ドメイン検索APIは利用料が非常に高価だったため、公開RDAP（Registration Data Access Protocol）APIを活用した独自検証エンジンを研究・開発し、外部費用ゼロでの即時判定を実現しました。',
       impact: '世界中で10,000件以上のアクティブなWebサイトを安定運用し、稼働率99.99%、グローバルTTFB応答時間180ms未満を達成。',
       achievements: [

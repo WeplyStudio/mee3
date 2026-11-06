@@ -219,7 +219,7 @@ export const AboutMePage: React.FC<Props> = ({
       trust: "mempercayai",
       catchWhatMostSkip: "saya menangkap apa yang dilewatkan kebanyakan orang. dan saya tidak pernah terburu-buru.",
       whoAmITitle: "[siapa saya]",
-      whoAmIContent: "Saya Steward Jason, saya sempat belajar teknik elektro dan berhenti di tahun ketiga. Saya mulai coding, dan saat coding saya terpikat pada desain. Lalu saatnya memulai hal saya sendiri. Pada tahun 2023 saya mendirikan Skynotech di Indonesia. Sejak saat itu saya mendesain sekaligus membangun.",
+      whoAmIContent: "saya steward jason. saat ini saya masih duduk di bangku sma (high school), dan saya sudah mulai belajar coding sejak kelas 6 sd. saya memulai perjalanan saya sejak 3 tahun terakhir — tepatnya saat kelas 2 smp — dengan membangun zylo, platform website hosting dengan harga terjangkau di mana saya bekerja sama dengan perusahaan lain sebagai penyedia infrastruktur. dari sanalah saya terpikat pada desain sekaligus pengembangan produk.",
       whatIDoTitle: "[apa yang saya lakukan]",
       whatIDoContentMain: "Saya mendesain antarmuka dan menulis kodenya sendiri. Saya tidak melihatnya sebagai dua pekerjaan terpisah.",
       whatIDoContentSub: "Saya membuat antarmuka produk, situs perusahaan, aplikasi seluler. Saya mengambil sebuah ide dan mengubahnya menjadi sesuatu yang berfungsi.",
@@ -254,7 +254,7 @@ export const AboutMePage: React.FC<Props> = ({
       trust: "trust",
       catchWhatMostSkip: "i catch what most skip. and i never rush it.",
       whoAmITitle: "[who am i]",
-      whoAmIContent: "I'm steward jason, i was studying electrical engineering and quit in my third year. i started coding, and while coding i got hooked on design. then it was time for my own thing. in 2023 i started skynotech in indonesia. since then i both design and build.",
+      whoAmIContent: "i'm steward jason. i'm currently in high school, and i first started learning to code back in 6th grade. i began my journey over the last 3 years — back in 8th grade (middle school) — by building zylo, an affordable website hosting platform where i partnered with infrastructure provider companies. while building it, i got hooked on design, and since then i both design and build.",
       whatIDoTitle: "[what i do]",
       whatIDoContentMain: "i design the interface and write its code myself. i don't see them as two separate jobs.",
       whatIDoContentSub: "i make product interfaces, corporate sites, mobile apps. i take an idea and turn it into something that works.",
@@ -289,7 +289,7 @@ export const AboutMePage: React.FC<Props> = ({
       trust: "vertrauen",
       catchWhatMostSkip: "ich erfasse, was die meisten übersehen. und ich überstürze nichts.",
       whoAmITitle: "[wer ich bin]",
-      whoAmIContent: "Ich bin Steward Jason. Ich habe Elektrotechnik studiert und im dritten Jahr abgebrochen, um mich ganz dem Programmieren und Design zu widmen. 2023 habe ich Skynotech in Indonesien gegründet. Seitdem gestalte und entwickle ich digitale Systeme.",
+      whoAmIContent: "ich bin steward jason. derzeit gehe ich noch zur high school (oberstufe), habe aber bereits in der 6. klasse mit dem programmieren begonnen. meine reise startete vor 3 jahren in der 8. klasse (middle school) mit dem aufbau von zylo — einer erschwinglichen webhosting-plattform in zusammenarbeit mit infrastruktur-partnerunternehmen. seitdem gestalte und entwickle ich digitale produkte.",
       whatIDoTitle: "[was ich tue]",
       whatIDoContentMain: "Ich entwerfe das Interface und schreibe den Code selbst. Für mich sind das keine zwei getrennten Berufe.",
       whatIDoContentSub: "Ich baue Produkt-Interfaces, Unternehmensseiten und mobile Apps. Ich nehme eine Idee und mache daraus ein funktionierendes Produkt.",
@@ -323,7 +323,7 @@ export const AboutMePage: React.FC<Props> = ({
       trust: "信頼",
       catchWhatMostSkip: "多くの人が見落とす細部に気づき、決して妥協しません。",
       whoAmITitle: "[私について]",
-      whoAmIContent: "スチュワード・ジェイソンと申します。大学で電気工学を専攻後、コードとデザインの世界に没頭しました。2023年にインドネシアでSkynotechを設立し、UI/UX設計とフロントエンド開発を一貫して手掛けています。",
+      whoAmIContent: "スチュワード・ジェイソンです。現在は高校生（ハイスクール在学中）で、小学6年生（6th grade）の頃からプログラミングを学び始めました。3年前の中学2年生（8th grade）の時に、インフラ提供企業と提携して手頃な価格のWebホスティングプラットフォーム「Zylo」を構築したのが私の旅の始まりです。それ以来、デザインと開発の両方を手掛けています。",
       whatIDoTitle: "[提供価値]",
       whatIDoContentMain: "インターフェースのデザインから実装までを一貫して行います。分断のないシームレスなモノづくりを追求しています。",
       whatIDoContentSub: "プロダクトUI、企業サイト、モバイルアプリなど、抽象的なアイデアを実用的なプロダクトへ昇華させます。",
@@ -872,25 +872,18 @@ export const AboutMePage: React.FC<Props> = ({
               <span className="font-mono-code text-[11px] text-zinc-400 lowercase tracking-widest block">{t.whatIWorkWith}</span>
             </div>
 
-            <div className="flex flex-col items-center justify-center gap-6 max-w-2xl mx-auto">
-              
-              {/* Row 1 and Row 2 compiled flex layout */}
-              <div className="flex flex-wrap justify-center gap-3 sm:gap-4 text-zinc-400">
+            <div className="flex flex-col items-center justify-center max-w-2xl mx-auto">
+              <div className="flex flex-wrap justify-center gap-2.5 sm:gap-3 text-zinc-500">
                 {techLogos.map((tech) => (
-                  <div 
-                    key={tech.name} 
-                    className="p-3.5 bg-white hover:bg-black hover:text-white rounded-2xl border border-zinc-200/80 hover:border-black flex items-center justify-center transition-all duration-300 hover:scale-105 group relative cursor-pointer shadow-xs"
+                  <div
+                    key={tech.name}
+                    aria-label={tech.name}
+                    className="w-12 h-12 sm:w-13 sm:h-13 bg-zinc-50/60 hover:bg-zinc-900 text-zinc-500 hover:text-white rounded-xl border border-zinc-200/70 hover:border-zinc-900 flex items-center justify-center transition-all duration-300 hover:-translate-y-0.5 cursor-default"
                   >
                     {tech.svg}
-                    
-                    {/* Tooltip */}
-                    <span className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-black text-white text-[9px] font-mono-code px-2 py-0.5 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-md z-10">
-                      {tech.name}
-                    </span>
                   </div>
                 ))}
               </div>
-
             </div>
           </div>
         </ScrollReveal>

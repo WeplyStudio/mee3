@@ -24,6 +24,7 @@ import { LiveClock } from './components/LiveClock';
 import { ImageTooltip, getProjectTooltipText } from './components/ImageTooltip';
 import { AnimatedStatCard } from './components/AnimatedStatCard';
 import { AskTheCloud } from './components/AskTheCloud';
+import { GsapGlobalAnimator } from './components/GsapGlobalAnimator';
 import { ambientSound, setupGlobalUISFX, uiSfx } from './utils/audio';
 import { Language, Project } from './types';
 
@@ -511,6 +512,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-white text-[#121212] font-sans selection:bg-black selection:text-white relative">
+      <GsapGlobalAnimator pageKey={`${currentPage}-${activeProject?.id || ''}`} lang={lang} />
       {/* ------------------------------------------------------------- */}
       {/* TOP FLOATING / STICKY HEADER */}
       {/* ------------------------------------------------------------- */}
