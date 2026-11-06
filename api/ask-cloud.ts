@@ -101,7 +101,7 @@ export default async function handler(req: any, res: any) {
     });
 
     const sandboxedPrompt = `Default language if ambiguous: ${lang}\n<visitor_query>${rawPrompt}</visitor_query>`;
-    const candidateModels = ['gemini-3.1-flash-lite', 'gemini-3-flash-preview', 'gemini-flash-latest'];
+    const candidateModels = ['gemini-3.1-flash-lite', 'gemini-2.5-flash', 'gemini-flash-latest'];
     let lastError: unknown = null;
 
     for (const modelName of candidateModels) {

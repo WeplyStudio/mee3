@@ -445,8 +445,7 @@ app.post('/api/ask-cloud', async (req: Request, res: Response) => {
       return res.status(500).json({ ok: false, error: 'API key is not configured on the server.' });
     }
 
-    // Primary model: Gemini 3.1 Flash ('gemini-3.1-flash-lite') with fast fallbacks
-    const candidateModels = ['gemini-3.1-flash-lite', 'gemini-3-flash-preview', 'gemini-flash-latest'];
+    const candidateModels = ['gemini-3.1-flash-lite', 'gemini-2.5-flash', 'gemini-flash-latest'];
 
     const sandboxedPrompt = `Default language if ambiguous: ${lang}\n<visitor_query>${rawPrompt}</visitor_query>`;
 

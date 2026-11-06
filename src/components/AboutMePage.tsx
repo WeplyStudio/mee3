@@ -451,7 +451,12 @@ export const AboutMePage: React.FC<Props> = ({
               </div>
               <div className="md:col-span-8">
                 <div className="text-[13.5px] sm:text-sm text-zinc-700 leading-relaxed font-normal lowercase space-y-4 text-left">
-                  <p>{t.whoAmIContent}</p>
+                  <p>
+                    <span className="font-semibold text-zinc-900">hi</span>{' '}
+                    <span className="inline-block animate-wave origin-[70%_70%] text-base">👋</span>{' '}
+                    <span className="text-zinc-400">—</span>{' '}
+                    {t.whoAmIContent}
+                  </p>
                 </div>
               </div>
             </div>

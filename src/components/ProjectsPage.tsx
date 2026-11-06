@@ -91,7 +91,6 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({
                   isActive ? 'text-zinc-900 font-semibold' : 'text-zinc-400'
                 }`}
               >
-                <span>•</span>
                 <span className="lowercase">{filter.label}</span>
               </button>
             );
