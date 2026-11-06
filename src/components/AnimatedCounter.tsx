@@ -86,7 +86,7 @@ export function AnimatedCounter({
           setHasStarted(true);
           const timer = setTimeout(() => {
             runAnimation(duration);
-          }, delay);
+          }, 1000 + delay);
           return () => clearTimeout(timer);
         }
       },

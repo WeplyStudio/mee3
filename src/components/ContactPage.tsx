@@ -192,26 +192,22 @@ export const ContactPage: React.FC<ContactPageProps> = ({ lang }) => {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start my-auto py-8">
-        
-        {/* Left Column Statement */}
-        <div className="lg:col-span-4 space-y-2">
-          <ScrollReveal delay={150} distance={15}>
+      <ScrollReveal distance={24}>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start my-auto py-8">
+          
+          {/* Left Column Statement */}
+          <div className="lg:col-span-4 space-y-2">
             <h1 className="text-base sm:text-lg md:text-xl font-normal text-zinc-800 tracking-tight lowercase">
               {c.headline}
             </h1>
-          </ScrollReveal>
-          <ScrollReveal delay={200} distance={15}>
             <p className="text-xs sm:text-sm text-zinc-400 font-normal lowercase leading-relaxed">
               {c.subheadline}
             </p>
-          </ScrollReveal>
-        </div>
+          </div>
 
-        {/* Center Conversational Form Column */}
-        <div className="lg:col-span-7 lg:col-start-6">
-          {isSuccess ? (
-            <ScrollReveal delay={100} distance={15}>
+          {/* Center Conversational Form Column */}
+          <div className="lg:col-span-7 lg:col-start-6">
+            {isSuccess ? (
               <div className="p-8 rounded-2xl bg-zinc-100/80 border border-zinc-200/80 space-y-4 max-w-md">
                 <div className="flex items-center gap-2.5 text-zinc-900 font-medium text-sm lowercase">
                   <CheckCircle2 size={18} className="text-emerald-600" />
@@ -228,10 +224,8 @@ export const ContactPage: React.FC<ContactPageProps> = ({ lang }) => {
                   {c.sendAnother}
                 </button>
               </div>
-            </ScrollReveal>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-8 max-w-lg">
-              <ScrollReveal delay={200} distance={15}>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-8 max-w-lg">
                 <div className="space-y-6 text-base sm:text-lg md:text-xl font-normal text-zinc-800 leading-relaxed lowercase">
                   
                   {/* Sentence 1: Hello jason, i'm [your name]. */}
@@ -292,10 +286,8 @@ export const ContactPage: React.FC<ContactPageProps> = ({ lang }) => {
                   </div>
 
                 </div>
-              </ScrollReveal>
 
-              {/* Submit Button & Plain Status Text */}
-              <ScrollReveal delay={280} distance={15}>
+                {/* Submit Button & Plain Status Text */}
                 <div className="pt-2 flex flex-wrap items-center gap-3.5">
                   <button
                     type="submit"
@@ -327,16 +319,16 @@ export const ContactPage: React.FC<ContactPageProps> = ({ lang }) => {
                     </span>
                   )}
                 </div>
-              </ScrollReveal>
 
-            </form>
-          )}
+              </form>
+            )}
+          </div>
+
         </div>
-
-      </div>
+      </ScrollReveal>
 
       {/* Bottom Footer Section */}
-      <ScrollReveal delay={300} distance={15}>
+      <ScrollReveal distance={20}>
         <div className="pt-16 pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs font-mono-code text-zinc-400">
           
           {/* Left: hello@itsjason.my.id */}

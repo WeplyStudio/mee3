@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
-import './index.css';
+import './styles.css';
 import { setupSecurityProtection } from './utils/securityProtection';
 
 // Initialize anti-copy, anti-right-click on images, and anti-Ctrl+U protection

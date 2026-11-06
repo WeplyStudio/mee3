@@ -296,22 +296,18 @@ export const ProjectDetailPage: React.FC<Props> = ({
         {/* ------------------------------------------------------------- */}
         {/* HERO: Project Title & Summary */}
         {/* ------------------------------------------------------------- */}
-        <section className="space-y-6">
-          <ScrollReveal delay={50} distance={20}>
+        <ScrollReveal distance={28}>
+          <section className="space-y-6">
             <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-zinc-900 leading-[1.1] lowercase">
               {project.title}
             </h1>
-          </ScrollReveal>
 
-          <ScrollReveal delay={100} distance={20}>
             <p className="text-xs sm:text-[13.5px] text-zinc-600 leading-relaxed max-w-3xl font-normal lowercase">
               {project.summary || project.description}
             </p>
-          </ScrollReveal>
 
-          {/* Live Website Button */}
-          {project.liveUrl && (
-            <ScrollReveal delay={120} distance={15}>
+            {/* Live Website Button */}
+            {project.liveUrl && (
               <div className="pt-2 flex items-center gap-3">
                 <a
                   href={project.liveUrl}
@@ -324,11 +320,9 @@ export const ProjectDetailPage: React.FC<Props> = ({
                   <ArrowUpRight className="w-3.5 h-3.5 text-zinc-300 ml-0.5" />
                 </a>
               </div>
-            </ScrollReveal>
-          )}
+            )}
 
-          {/* 4 Metadata Columns */}
-          <ScrollReveal delay={150} distance={20}>
+            {/* 4 Metadata Columns */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-8 sm:pt-10">
               <div className="space-y-1">
                 <div className="text-[11px] font-mono-code text-zinc-400 lowercase">
@@ -366,15 +360,15 @@ export const ProjectDetailPage: React.FC<Props> = ({
                 </div>
               </div>
             </div>
-          </ScrollReveal>
-        </section>
+          </section>
+        </ScrollReveal>
 
         {/* ------------------------------------------------------------- */}
         {/* NARRATIVE SECTIONS: Problem, Decisions, Challenge, Impact */}
         {/* ------------------------------------------------------------- */}
         <section className="space-y-12 sm:space-y-16 pt-12 sm:pt-16">
           {/* [problem] */}
-          <ScrollReveal delay={100} distance={20}>
+          <ScrollReveal distance={24}>
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-16 items-start">
               <div className="md:col-span-3 text-xs sm:text-[13px] font-mono-code text-zinc-400 lowercase">
                 {l.problem}
@@ -386,7 +380,7 @@ export const ProjectDetailPage: React.FC<Props> = ({
           </ScrollReveal>
 
           {/* [decisions] */}
-          <ScrollReveal delay={150} distance={20}>
+          <ScrollReveal distance={24}>
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-16 items-start">
               <div className="md:col-span-3 text-xs sm:text-[13px] font-mono-code text-zinc-400 lowercase">
                 {l.decisions}
@@ -399,7 +393,7 @@ export const ProjectDetailPage: React.FC<Props> = ({
 
           {/* [challenge] */}
           {project.challenge && (
-            <ScrollReveal delay={175} distance={20}>
+            <ScrollReveal distance={24}>
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-16 items-start">
                 <div className="md:col-span-3 text-xs sm:text-[13px] font-mono-code text-zinc-400 lowercase">
                   {l.challenge}
@@ -412,7 +406,7 @@ export const ProjectDetailPage: React.FC<Props> = ({
           )}
 
           {/* [impact] */}
-          <ScrollReveal delay={200} distance={20}>
+          <ScrollReveal distance={24}>
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-16 items-start">
               <div className="md:col-span-3 text-xs sm:text-[13px] font-mono-code text-zinc-400 lowercase">
                 {l.impact}
@@ -427,20 +421,18 @@ export const ProjectDetailPage: React.FC<Props> = ({
         {/* ------------------------------------------------------------- */}
         {/* ACHIEVEMENTS / IMPACT METRICS */}
         {/* ------------------------------------------------------------- */}
-        <section className="pt-12 sm:pt-16">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 items-start">
-            <div className="md:col-span-3">
-              <ScrollReveal delay={100} distance={20}>
+        <ScrollReveal distance={28}>
+          <section className="pt-12 sm:pt-16">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 items-start">
+              <div className="md:col-span-3">
                 <div className="text-xs sm:text-[13px] font-mono-code text-zinc-400 lowercase">
                   {l.achievements}
                 </div>
-              </ScrollReveal>
-            </div>
+              </div>
 
-            <div className="md:col-span-9 space-y-10 sm:space-y-12">
-              {project.achievements.map((item, idx) => (
-                <ScrollReveal key={item.number + item.title} delay={idx * 100} distance={25}>
-                  <div className="space-y-2 group">
+              <div className="md:col-span-9 space-y-10 sm:space-y-12">
+                {project.achievements.map((item) => (
+                  <div key={item.number + item.title} className="space-y-2 group">
                     <div className="text-4xl sm:text-5xl font-black text-zinc-900 tracking-tight font-mono-code">
                       {item.number}
                     </div>
@@ -453,17 +445,17 @@ export const ProjectDetailPage: React.FC<Props> = ({
                       </p>
                     </div>
                   </div>
-                </ScrollReveal>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </ScrollReveal>
 
         {/* ------------------------------------------------------------- */}
         {/* SCREENS SHOWCASE GALLERY (MATCHING REFERENCE SCREENSHOT) */}
         {/* ------------------------------------------------------------- */}
-        <section className="pt-12 sm:pt-16 space-y-6">
-          <ScrollReveal delay={100} distance={20}>
+        <ScrollReveal distance={28}>
+          <section className="pt-12 sm:pt-16 space-y-6">
             <div className="flex items-center justify-between">
               <div className="text-xs sm:text-[13px] font-mono-code text-zinc-400 lowercase tracking-wider">
                 {l.screens}
@@ -472,13 +464,12 @@ export const ProjectDetailPage: React.FC<Props> = ({
                 [{screenItems.length} {l.screenCount}]
               </div>
             </div>
-          </ScrollReveal>
 
-          {/* 5-column responsive grid matching the reference screenshot */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
-            {screenItems.map((screen, idx) => (
-              <ScrollReveal key={screen.id} delay={idx * 40} distance={15}>
+            {/* 5-column responsive grid matching the reference screenshot */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+              {screenItems.map((screen, idx) => (
                 <div
+                  key={screen.id}
                   onClick={() => openLightbox(idx)}
                   className="group relative cursor-zoom-in rounded-xl overflow-hidden bg-[#eef0f3] hover:bg-[#e6e9ed] border border-zinc-200/80 hover:border-zinc-400 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 p-2 sm:p-2.5 flex flex-col justify-center items-center aspect-[4/3] sm:aspect-[16/11] select-none"
                   title={`${screen.title} - ${l.clickToZoom}`}
@@ -510,46 +501,48 @@ export const ProjectDetailPage: React.FC<Props> = ({
                     [{String(idx + 1).padStart(2, '0')}]
                   </div>
                 </div>
-              </ScrollReveal>
-            ))}
-          </div>
-        </section>
+              ))}
+            </div>
+          </section>
+        </ScrollReveal>
 
         {/* ------------------------------------------------------------- */}
         {/* BOTTOM NAVIGATION: Back to works & Next Project */}
         {/* ------------------------------------------------------------- */}
-        <section className="pt-12 sm:pt-16 flex flex-col sm:flex-row items-center justify-between gap-6 border-t border-zinc-100">
-          <button
-            onClick={onBack}
-            className="group flex items-center gap-2 text-xs sm:text-[13px] font-mono-code text-zinc-600 hover:text-black transition-colors cursor-pointer"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
-            <span>{l.backToWorks}</span>
-          </button>
-
-          {project.liveUrl && (
-            <a
-              href={project.liveUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-1.5 text-white font-sans text-xs sm:text-[13px] rounded-[8px] sm:rounded-[9px] shadow-xs hover:shadow-sm transition-all duration-300 cursor-pointer select-none bg-zinc-800 hover:bg-black active:scale-95"
-            >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-              <span className="font-medium lowercase">{project.liveUrl.replace(/^https?:\/\//, '')}</span>
-              <ArrowUpRight className="w-3.5 h-3.5 text-zinc-300 ml-0.5" />
-            </a>
-          )}
-
-          {nextProject && (
+        <ScrollReveal distance={24}>
+          <section className="pt-12 sm:pt-16 flex flex-col sm:flex-row items-center justify-between gap-6 border-t border-zinc-100">
             <button
-              onClick={() => onSelectProject(nextProject)}
-              className="group flex items-center gap-2 text-xs sm:text-[13px] font-mono-code text-zinc-800 hover:text-black font-semibold transition-colors cursor-pointer text-right"
+              onClick={onBack}
+              className="group flex items-center gap-2 text-xs sm:text-[13px] font-mono-code text-zinc-600 hover:text-black transition-colors cursor-pointer"
             >
-              <span className="truncate max-w-[280px] sm:max-w-none">{nextProject.title}</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform shrink-0" />
+              <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
+              <span>{l.backToWorks}</span>
             </button>
-          )}
-        </section>
+
+            {project.liveUrl && (
+              <a
+                href={project.liveUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-3.5 sm:py-1.5 text-white font-sans text-xs sm:text-[13px] rounded-[8px] sm:rounded-[9px] shadow-xs hover:shadow-sm transition-all duration-300 cursor-pointer select-none bg-zinc-800 hover:bg-black active:scale-95"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span className="font-medium lowercase">{project.liveUrl.replace(/^https?:\/\//, '')}</span>
+                <ArrowUpRight className="w-3.5 h-3.5 text-zinc-300 ml-0.5" />
+              </a>
+            )}
+
+            {nextProject && (
+              <button
+                onClick={() => onSelectProject(nextProject)}
+                className="group flex items-center gap-2 text-xs sm:text-[13px] font-mono-code text-zinc-800 hover:text-black font-semibold transition-colors cursor-pointer text-right"
+              >
+                <span className="truncate max-w-[280px] sm:max-w-none">{nextProject.title}</span>
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform shrink-0" />
+              </button>
+            )}
+          </section>
+        </ScrollReveal>
       </main>
 
       {/* ------------------------------------------------------------- */}

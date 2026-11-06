@@ -7,8 +7,8 @@ interface ShutterRevealImageProps {
   alt?: string;
   className?: string;
   imgClassName?: string;
-  delay?: number; // In milliseconds or seconds (auto-normalized)
-  duration?: number; // In seconds (default: 1.05s)
+  delay?: number;
+  duration?: number;
   fetchPriority?: 'high' | 'low' | 'auto';
   loading?: 'lazy' | 'eager';
   decoding?: 'async' | 'sync' | 'auto';
@@ -18,8 +18,8 @@ interface ShutterRevealImageProps {
 
 /**
  * ShutterRevealImage
- * Display opens from bottom to top (inset(100% 0 0 0) -> inset(0 0 0 0))
- * The image itself stays stationary for a pure, elegant curtain wipe reveal.
+ * Renders the image cleanly inside its frame without clipping the IntersectionObserver box,
+ * so images inside ScrollReveal sections are always visible when the section reveals.
  */
 export const ShutterRevealImage: React.FC<ShutterRevealImageProps> = ({
   src,
@@ -28,85 +28,16 @@ export const ShutterRevealImage: React.FC<ShutterRevealImageProps> = ({
   alt = '',
   className = '',
   imgClassName = 'w-full h-full object-cover',
-  delay = 0,
-  duration = 1.05,
   fetchPriority,
   loading = 'lazy',
   decoding = 'async',
   onClick,
   children,
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState<boolean>(fetchPriority === 'high');
-
-  const delayMs = delay < 10 ? delay * 1000 : delay;
-  const durationMs = duration < 10 ? duration * 1000 : duration;
-
-  useEffect(() => {
-    if (isVisible) return;
-    const el = containerRef.current;
-    if (!el) {
-      setIsVisible(true);
-      return;
-    }
-
-    try {
-      const rect = el.getBoundingClientRect();
-      const vh = window.innerHeight || document.documentElement.clientHeight || 800;
-      if (rect.top <= vh + 100 && rect.bottom >= -100) {
-        setIsVisible(true);
-        return;
-      }
-    } catch {
-      setIsVisible(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting || entry.intersectionRatio > 0) {
-            setIsVisible(true);
-            observer.disconnect();
-            break;
-          }
-        }
-      },
-      {
-        threshold: 0.08,
-        rootMargin: '0px 0px -40px 0px',
-      }
-    );
-
-    observer.observe(el);
-
-    const timer = setTimeout(() => {
-      setIsVisible(true);
-    }, 400);
-
-    return () => {
-      observer.disconnect();
-      clearTimeout(timer);
-    };
-  }, [isVisible]);
-
   return (
     <div
-      ref={containerRef}
       onClick={onClick}
       className={`relative overflow-hidden ${className}`}
-      style={{
-        clipPath: isVisible ? 'inset(0% 0% 0% 0%)' : 'inset(100% 0% 0% 0%)',
-        WebkitClipPath: isVisible ? 'inset(0% 0% 0% 0%)' : 'inset(100% 0% 0% 0%)',
-        opacity: isVisible ? 1 : 0.85,
-        transitionProperty: 'clip-path, -webkit-clip-path, opacity',
-        transitionDuration: `${durationMs}ms`,
-        transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
-        transitionDelay: `${delayMs}ms`,
-        willChange: 'clip-path, -webkit-clip-path',
-        backfaceVisibility: 'hidden',
-        WebkitBackfaceVisibility: 'hidden',
-      }}
     >
       <img
         src={src}
@@ -116,12 +47,6 @@ export const ShutterRevealImage: React.FC<ShutterRevealImageProps> = ({
         loading={loading}
         decoding={decoding}
         fetchPriority={fetchPriority}
-        style={{
-          transform: 'none', // Image itself does not move from bottom to top!
-          willChange: 'transform',
-          backfaceVisibility: 'hidden',
-          WebkitBackfaceVisibility: 'hidden',
-        }}
         className={imgClassName}
       />
       {children}
@@ -147,7 +72,7 @@ export const ShutterReveal: React.FC<ShutterRevealProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
 
-  const delayMs = delay < 10 ? delay * 1000 : delay;
+  const extraDelayMs = delay < 10 ? delay * 1000 : delay;
   const durationMs = duration < 10 ? duration * 1000 : duration;
 
   useEffect(() => {
@@ -157,43 +82,34 @@ export const ShutterReveal: React.FC<ShutterRevealProps> = ({
       return;
     }
 
-    try {
-      const rect = el.getBoundingClientRect();
-      const vh = window.innerHeight || document.documentElement.clientHeight || 800;
-      if (rect.top <= vh + 100 && rect.bottom >= -100) {
-        setIsVisible(true);
-        return;
-      }
-    } catch {
-      setIsVisible(true);
-      return;
-    }
+    let revealTimer: number | null = null;
 
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting || entry.intersectionRatio > 0) {
-            setIsVisible(true);
+            if (revealTimer === null) {
+              revealTimer = window.setTimeout(() => {
+                setIsVisible(true);
+              }, 1000);
+            }
             observer.disconnect();
             break;
           }
         }
       },
       {
-        threshold: 0.08,
-        rootMargin: '0px 0px -40px 0px',
+        threshold: 0.05,
       }
     );
 
     observer.observe(el);
 
-    const timer = setTimeout(() => {
-      setIsVisible(true);
-    }, 400);
-
     return () => {
       observer.disconnect();
-      clearTimeout(timer);
+      if (revealTimer !== null) {
+        window.clearTimeout(revealTimer);
+      }
     };
   }, []);
 
@@ -202,20 +118,20 @@ export const ShutterReveal: React.FC<ShutterRevealProps> = ({
       ref={containerRef}
       onClick={onClick}
       className={`relative overflow-hidden ${className}`}
-      style={{
-        clipPath: isVisible ? 'inset(0% 0% 0% 0%)' : 'inset(100% 0% 0% 0%)',
-        WebkitClipPath: isVisible ? 'inset(0% 0% 0% 0%)' : 'inset(100% 0% 0% 0%)',
-        opacity: isVisible ? 1 : 0.85,
-        transitionProperty: 'clip-path, -webkit-clip-path, opacity',
-        transitionDuration: `${durationMs}ms`,
-        transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
-        transitionDelay: `${delayMs}ms`,
-        willChange: 'clip-path, -webkit-clip-path',
-        backfaceVisibility: 'hidden',
-        WebkitBackfaceVisibility: 'hidden',
-      }}
     >
-      {children}
+      <div
+        className="w-full h-full"
+        style={{
+          opacity: isVisible ? 1 : 0,
+          transform: isVisible ? 'translate3d(0, 0, 0)' : 'translate3d(0, 24px, 0)',
+          transitionProperty: 'transform, opacity',
+          transitionDuration: `${durationMs}ms`,
+          transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+          transitionDelay: `${Math.min(extraDelayMs, 250)}ms`,
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 };

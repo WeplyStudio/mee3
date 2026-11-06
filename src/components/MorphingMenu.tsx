@@ -12,7 +12,6 @@ interface Props {
   onToggleAudio: () => void;
   onOpenContact: () => void;
   onOpenStory: () => void;
-  onOpen404?: () => void;
   onScrollTo: (id: string) => void;
   menuLabel: string;
 }
@@ -63,7 +62,6 @@ export const MorphingMenu: React.FC<Props> = ({
   onToggleAudio,
   onOpenContact,
   onOpenStory,
-  onOpen404,
   onScrollTo,
   menuLabel,
 }) => {
@@ -121,7 +119,7 @@ export const MorphingMenu: React.FC<Props> = ({
             isOpen
               ? {
                   width: 'min(calc(100vw - 32px), 280px)',
-                  height: 'min(calc(100vh - 120px), 390px)',
+                  height: 'min(calc(100vh - 120px), 350px)',
                   borderRadius: 22,
                   backgroundColor: '#121213',
                   boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.95)',
@@ -216,18 +214,18 @@ export const MorphingMenu: React.FC<Props> = ({
                 </motion.div>
 
                 {/* Middle Main Navigation List - Clean Text Only (No Icons) */}
-                <nav className="flex flex-col space-y-2 my-auto pl-1">
+                <nav className="flex flex-col space-y-2.5 my-auto pl-1">
                   <motion.div variants={itemVariants}>
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleNav(() => onScrollTo('projects'));
+                        handleNav(() => onScrollTo('home'));
                       }}
                       onMouseEnter={() => uiSfx.playHover()}
-                      className="text-left text-[21px] sm:text-[23px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer lowercase w-full"
+                      className="text-left text-[21px] sm:text-[23px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer w-full"
                     >
-                      portfolio
+                      Home
                     </button>
                   </motion.div>
 
@@ -239,9 +237,9 @@ export const MorphingMenu: React.FC<Props> = ({
                         handleNav(onOpenStory);
                       }}
                       onMouseEnter={() => uiSfx.playHover()}
-                      className="text-left text-[21px] sm:text-[23px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer lowercase w-full"
+                      className="text-left text-[21px] sm:text-[23px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer w-full"
                     >
-                      identity
+                      About Me
                     </button>
                   </motion.div>
 
@@ -250,26 +248,12 @@ export const MorphingMenu: React.FC<Props> = ({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleNav(() => onScrollTo('thought'));
+                        handleNav(() => onScrollTo('projects'));
                       }}
                       onMouseEnter={() => uiSfx.playHover()}
-                      className="text-left text-[21px] sm:text-[23px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer lowercase w-full"
+                      className="text-left text-[21px] sm:text-[23px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer w-full"
                     >
-                      thought
-                    </button>
-                  </motion.div>
-
-                  <motion.div variants={itemVariants}>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleNav(() => onScrollTo('stats'));
-                      }}
-                      onMouseEnter={() => uiSfx.playHover()}
-                      className="text-left text-[21px] sm:text-[23px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer lowercase w-full"
-                    >
-                      evidence
+                      Work
                     </button>
                   </motion.div>
 
@@ -281,27 +265,11 @@ export const MorphingMenu: React.FC<Props> = ({
                         handleNav(onOpenContact);
                       }}
                       onMouseEnter={() => uiSfx.playHover()}
-                      className="text-left text-[21px] sm:text-[23px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer lowercase w-full"
+                      className="text-left text-[21px] sm:text-[23px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer w-full"
                     >
-                      leave a thought
+                      Contact Me
                     </button>
                   </motion.div>
-
-                  {onOpen404 && (
-                    <motion.div variants={itemVariants}>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleNav(onOpen404);
-                        }}
-                        onMouseEnter={() => uiSfx.playHover()}
-                        className="text-left text-[14px] font-mono-code text-zinc-500 hover:text-zinc-200 transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer lowercase w-full pt-1"
-                      >
-                        [404]
-                      </button>
-                    </motion.div>
-                  )}
                 </nav>
 
                 {/* Bottom Row: [ jason ]                     instagram   github */}

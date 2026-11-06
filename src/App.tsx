@@ -23,6 +23,7 @@ import { EncryptedPrinciple } from './components/EncryptedPrinciple';
 import { LiveClock } from './components/LiveClock';
 import { ImageTooltip, getProjectTooltipText } from './components/ImageTooltip';
 import { AnimatedStatCard } from './components/AnimatedStatCard';
+import { AskTheCloud } from './components/AskTheCloud';
 import { ambientSound, setupGlobalUISFX, uiSfx } from './utils/audio';
 import { Language, Project } from './types';
 
@@ -534,13 +535,12 @@ export default function App() {
               navigateTo('aboutme');
               setIsMenuOpen(false);
             }}
-            onOpen404={() => {
-              navigateTo('404');
-              setIsMenuOpen(false);
-            }}
             onScrollTo={(id) => {
               if (id === 'projects') {
                 navigateTo('projects');
+              } else if (id === 'home') {
+                navigateTo('home');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
               } else {
                 navigateTo('home');
                 setTimeout(() => {
@@ -585,129 +585,128 @@ export default function App() {
               {/* ------------------------------------------------------------- */}
               {/* HERO SECTION */}
               {/* ------------------------------------------------------------- */}
-            <section id="hero" className="relative pt-24 sm:pt-28 pb-8 overflow-hidden mb-12">
-        {/* Hero Top Metadata Row (Aligned with center photo width) */}
-        <ScrollReveal delay={100} distance={20}>
-          <div className="w-64 sm:w-80 md:w-96 mx-auto px-0 flex justify-between items-center text-xs sm:text-[13px] text-zinc-400 font-mono-code mb-8 sm:mb-12">
-            {/* Left: Real-time Clock */}
-            <div className="flex items-center gap-2">
-              <LiveClock />
-            </div>
+            <section id="hero" className="relative pt-24 sm:pt-28 pb-8 overflow-hidden mb-12 bg-white">
+              <ScrollReveal distance={28} className="bg-white">
+                {/* Hero Top Metadata Row (Aligned with center photo width) */}
+                <div className="w-64 sm:w-80 md:w-96 mx-auto px-0 flex justify-between items-center text-xs sm:text-[13px] text-zinc-400 font-mono-code mb-8 sm:mb-12">
+                  {/* Left: Real-time Clock */}
+                  <div className="flex items-center gap-2">
+                    <LiveClock />
+                  </div>
 
-            {/* Right: lend an ear (Ambient sound toggle) */}
-            <button
-              onClick={toggleSound}
-              className="group flex items-center gap-2 text-zinc-400 hover:text-zinc-900 transition-colors cursor-pointer"
-            >
-              <AnimatedSoundWave isPlaying={isAudioPlaying} size={13} />
-              <span>{t.lendAnEar}</span>
-            </button>
-          </div>
-        </ScrollReveal>
+                  {/* Right: lend an ear (Ambient sound toggle) */}
+                  <button
+                    onClick={toggleSound}
+                    className="group flex items-center gap-2 text-zinc-400 hover:text-zinc-900 transition-colors cursor-pointer"
+                  >
+                    <AnimatedSoundWave isPlaying={isAudioPlaying} size={13} />
+                    <span>{t.lendAnEar}</span>
+                  </button>
+                </div>
 
-        {/* Hero Portrait & Infinite Slide Text Container */}
-        <div className="relative w-full flex flex-col items-center justify-center my-6 sm:my-10">
-          
-          {/* Center Avatar Photo matching the reference */}
-          <div className="relative z-10 flex flex-col items-center">
-            <div className="w-64 h-64 sm:w-80 sm:h-80 md:w-96 md:h-96 rounded-none bg-[#201d1c] overflow-hidden shadow-2xl relative group border border-zinc-900/10">
-              {/* Photo Image with scroll-triggered shutter reveal & interactive tooltip */}
-              <ImageTooltip isMe={true} lang={lang} className="w-full h-full">
-                <ShutterRevealImage
-                  src={siteSettings?.heroImage || "/profile-3.webp"}
-                  srcSet={siteSettings?.heroImage ? undefined : "/profile-3-400.webp 400w, /profile-3-600.webp 600w, /profile-3.webp 800w"}
-                  sizes="(max-width: 640px) 256px, (max-width: 768px) 320px, 384px"
-                  alt="Steward Jason Liuwindra"
-                  fetchPriority="high"
-                  loading="eager"
-                  decoding="async"
-                  className="w-full h-full"
-                  imgClassName="w-full h-full object-cover object-center grayscale contrast-115 group-hover:scale-105 transition-transform duration-700 ease-out"
-                />
-              </ImageTooltip>
-            </div>
+                {/* Hero Portrait & Infinite Slide Text Container */}
+                <div className="relative w-full bg-white flex flex-col items-center justify-center py-6 sm:py-10">
+                  
+                  {/* Center Avatar Photo matching the reference */}
+                  <div className="relative z-10 flex flex-col items-center">
+                    <div className="w-64 h-64 sm:w-80 sm:h-80 md:w-96 md:h-96 rounded-none bg-[#201d1c] overflow-hidden shadow-2xl relative group border border-zinc-900/10">
+                      {/* Photo Image with scroll-triggered shutter reveal & interactive tooltip */}
+                      <ImageTooltip isMe={true} lang={lang} className="w-full h-full">
+                        <ShutterRevealImage
+                          src={siteSettings?.heroImage || "/profile-3.webp"}
+                          srcSet={siteSettings?.heroImage ? undefined : "/profile-3-400.webp 400w, /profile-3-600.webp 600w, /profile-3.webp 800w"}
+                          sizes="(max-width: 640px) 256px, (max-width: 768px) 320px, 384px"
+                          alt="Steward Jason Liuwindra"
+                          fetchPriority="high"
+                          loading="eager"
+                          decoding="async"
+                          className="w-full h-full"
+                          imgClassName="w-full h-full object-cover object-center grayscale contrast-115 group-hover:scale-105 transition-transform duration-700 ease-out"
+                        />
+                      </ImageTooltip>
+                    </div>
 
-            {/* [steward jason liuwindra] caption */}
-            <div className="mt-4 text-[11px] sm:text-xs font-mono-code text-zinc-500 tracking-wide">
-              {t.nameBracket}
-            </div>
-          </div>
+                    {/* [steward jason liuwindra] caption */}
+                    <div className="mt-4 text-[11px] sm:text-xs font-mono-code text-zinc-500 tracking-wide">
+                      {t.nameBracket}
+                    </div>
+                  </div>
 
-          {/* GIANT INFINITE SLIDE MARQUEE TEXT (Overlays on top of photo with automatic color inversion) */}
-          <div className="absolute w-full top-[42%] sm:top-[44%] -translate-y-1/2 pointer-events-none select-none z-20 overflow-hidden mix-blend-difference">
-            <div className="animate-marquee-infinite flex whitespace-nowrap text-[13vw] sm:text-[14vw] font-bold tracking-tighter text-white leading-none uppercase">
-              <span>{t.marqueeWord}</span>
-              <span>{t.marqueeWord}</span>
-            </div>
-          </div>
-        </div>
-      </section>
+                  {/* GIANT INFINITE SLIDE MARQUEE TEXT (Overlays on top of photo with automatic color inversion) */}
+                  <div className="absolute w-full top-[42%] sm:top-[44%] -translate-y-1/2 pointer-events-none select-none z-20 overflow-hidden mix-blend-difference">
+                    <div className="animate-marquee-infinite flex whitespace-nowrap text-[13vw] sm:text-[14vw] font-bold tracking-tighter text-white leading-none uppercase">
+                      <span>{t.marqueeWord}</span>
+                      <span>{t.marqueeWord}</span>
+                    </div>
+                  </div>
+                </div>
+              </ScrollReveal>
+            </section>
 
       {/* ------------------------------------------------------------- */}
       {/* ABOUT / INTRO SECTION */}
       {/* ------------------------------------------------------------- */}
       <section id="about" className="py-12 px-6 sm:px-12 max-w-7xl mx-auto mt-32 sm:mt-48 md:mt-60 mb-12">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 items-center">
-          {/* Left Column: [hey, i'm] [steward jason liuwindra] */}
-          <div className="md:col-span-3">
-            <ScrollReveal delay={100} distance={25}>
+        <ScrollReveal distance={28}>
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 items-center">
+            {/* Left Column: [hey, i'm] [steward jason liuwindra] */}
+            <div className="md:col-span-3">
               <div className="space-y-1 font-mono-code text-xs sm:text-[13px] text-zinc-500">
                 <div>[{t.heyIm}]</div>
                 <div className="text-zinc-800 font-medium">{t.nameBracket}</div>
               </div>
-            </ScrollReveal>
-          </div>
-
-          {/* Center Column: Portrait Photo */}
-          <div className="md:col-span-4 flex justify-center">
-            <div className="w-32 h-44 sm:w-36 sm:h-52 rounded-none bg-zinc-800 overflow-hidden shadow-lg border border-zinc-200">
-              <ImageTooltip isMe={true} lang={lang} className="w-full h-full">
-                <ShutterRevealImage
-                  src={siteSettings?.aboutImage || "/profile-2.webp"}
-                  srcSet={siteSettings?.aboutImage ? undefined : "/profile-2-400.webp 400w, /profile-2.webp 600w"}
-                  sizes="(max-width: 640px) 128px, 144px"
-                  alt="Steward Jason Liuwindra selfie"
-                  loading="lazy"
-                  decoding="async"
-                  className="w-full h-full"
-                  imgClassName="w-full h-full object-cover grayscale contrast-125 hover:scale-105 transition-transform duration-700"
-                />
-              </ImageTooltip>
             </div>
-          </div>
 
-          {/* Right Column: Statement */}
-          <div className="md:col-span-5">
-            <ScrollReveal delay={300} distance={25}>
+            {/* Center Column: Portrait Photo */}
+            <div className="md:col-span-4 flex justify-center">
+              <div className="w-32 h-44 sm:w-36 sm:h-52 rounded-none bg-zinc-800 overflow-hidden shadow-lg border border-zinc-200">
+                <ImageTooltip isMe={true} lang={lang} className="w-full h-full">
+                  <ShutterRevealImage
+                    src={siteSettings?.aboutImage || "/profile-2.webp"}
+                    srcSet={siteSettings?.aboutImage ? undefined : "/profile-2-400.webp 400w, /profile-2.webp 600w"}
+                    sizes="(max-width: 640px) 128px, 144px"
+                    alt="Steward Jason Liuwindra selfie"
+                    loading="lazy"
+                    decoding="async"
+                    className="w-full h-full"
+                    imgClassName="w-full h-full object-cover grayscale contrast-125 hover:scale-105 transition-transform duration-700"
+                  />
+                </ImageTooltip>
+              </div>
+            </div>
+
+            {/* Right Column: Statement */}
+            <div className="md:col-span-5">
               <div className="text-xs sm:text-sm text-zinc-600 leading-relaxed max-w-md">
                 {t.introRole}
               </div>
-            </ScrollReveal>
+            </div>
           </div>
-        </div>
+        </ScrollReveal>
 
         {/* SCROLL-DRIVEN ANIMATED QUOTE WITH COLOR INTERPOLATION & SLIDE UP */}
-        <AnimatedQuote
-          text={t.quoteCenter}
-          onOpenStory={() => navigateTo('aboutme')}
-          myStoryLabel={t.myStory}
-        />
+        <ScrollReveal distance={28}>
+          <AnimatedQuote
+            text={t.quoteCenter}
+            onOpenStory={() => navigateTo('aboutme')}
+            myStoryLabel={t.myStory}
+          />
+        </ScrollReveal>
       </section>
 
       {/* ------------------------------------------------------------- */}
       {/* PROJECTS SHOWCASE SECTION (3 CORE PROJECTS) */}
       {/* ------------------------------------------------------------- */}
       <section id="projects" className="py-12 mt-32 sm:mt-48 md:mt-60 mb-12">
-        <ScrollReveal delay={100} distance={20}>
+        <ScrollReveal distance={28}>
           <div className="text-xs sm:text-[13px] font-mono-code text-zinc-400 text-left px-6 sm:px-12 max-w-7xl mx-auto mb-8 sm:mb-12 lowercase tracking-wider">
             {t.selectedWorksLabel || '[selected works]'}
           </div>
-        </ScrollReveal>
-        <div className="w-full">
-          <div className="grid grid-cols-1 md:grid-cols-3">
-            {currentProjects.map((project, idx) => (
-              <ScrollReveal key={project.id} delay={idx * 80} distance={0} className="h-full">
+          <div className="w-full">
+            <div className="grid grid-cols-1 md:grid-cols-3">
+              {currentProjects.map((project) => (
                 <div
+                  key={project.id}
                   onClick={() => {
                     navigateTo('project-detail', undefined, { project });
                   }}
@@ -728,55 +727,49 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-              </ScrollReveal>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        </ScrollReveal>
       </section>
 
       {/* ------------------------------------------------------------- */}
       {/* PRINCIPLES SECTION */}
       {/* ------------------------------------------------------------- */}
       <section id="principles" className="py-12 px-6 sm:px-12 max-w-xl sm:max-w-2xl mx-auto my-12 text-left">
-        <ScrollReveal delay={100} distance={20}>
+        <ScrollReveal distance={28}>
           <div className="text-xs sm:text-[13px] font-mono-code text-zinc-400 mb-6 tracking-wide text-left">
             {t.principlesLabel}
           </div>
-        </ScrollReveal>
-        <div className="space-y-3 sm:space-y-4 text-xs sm:text-[13.5px] text-zinc-800 font-normal leading-relaxed text-left">
-          {currentPrinciples.map((principle, index) => (
-            <ScrollReveal key={index} delay={index * 80} distance={20}>
-              <div>
+          <div className="space-y-3 sm:space-y-4 text-xs sm:text-[13.5px] text-zinc-800 font-normal leading-relaxed text-left">
+            {currentPrinciples.map((principle, index) => (
+              <div key={index}>
                 <EncryptedPrinciple text={principle} lang={lang} />
               </div>
-            </ScrollReveal>
-          ))}
-        </div>
+            ))}
+          </div>
+        </ScrollReveal>
       </section>
 
       {/* ------------------------------------------------------------- */}
       {/* THOUGHT SECTION */}
       {/* ------------------------------------------------------------- */}
       <section id="thought" className="py-12 px-6 sm:px-12 max-w-xl sm:max-w-2xl mx-auto my-12 text-left">
-        <ScrollReveal delay={100} distance={20}>
+        <ScrollReveal distance={28}>
           <div className="text-xs sm:text-[13px] font-mono-code text-zinc-400 mb-6 tracking-wide text-left">
             {t.thoughtLabel}
           </div>
-        </ScrollReveal>
 
-        <div className="space-y-8 text-left">
-          <ScrollReveal delay={150} distance={25}>
+          <div className="space-y-8 text-left">
             <p className="text-xs sm:text-[13px] text-zinc-600 leading-relaxed text-left">
               {t.thoughtIntro}
             </p>
-          </ScrollReveal>
 
-          <div className="space-y-4 pt-4 text-left">
-            {currentPhilosophy.map((item, idx) => {
-              const isExpanded = expandedThought === item.number;
-              return (
-                <ScrollReveal key={item.number} delay={idx * 100} distance={25}>
-                  <div className="border-b border-zinc-100 pb-4 transition-colors">
+            <div className="space-y-4 pt-4 text-left">
+              {currentPhilosophy.map((item) => {
+                const isExpanded = expandedThought === item.number;
+                return (
+                  <div key={item.number} className="border-b border-zinc-100 pb-4 transition-colors">
                     <button
                       onClick={() => setExpandedThought(isExpanded ? '' : item.number)}
                       className="flex items-baseline gap-4 w-full text-left group cursor-pointer py-1"
@@ -816,251 +809,242 @@ export default function App() {
                       </div>
                     </div>
                   </div>
-                </ScrollReveal>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        </ScrollReveal>
       </section>
 
       {/* ------------------------------------------------------------- */}
       {/* CURVED PATH MARQUEE (VISUAL CURATION) */}
       {/* ------------------------------------------------------------- */}
-      <VisualCurationMarquee lang={lang} />
+      <ScrollReveal distance={28}>
+        <VisualCurationMarquee lang={lang} />
+      </ScrollReveal>
 
       {/* ------------------------------------------------------------- */}
       {/* SERVICES SECTION */}
       {/* ------------------------------------------------------------- */}
       <section id="services" className="py-12 px-6 sm:px-12 max-w-xl sm:max-w-2xl mx-auto my-12 text-left">
-        <ScrollReveal delay={100} distance={20}>
+        <ScrollReveal distance={28}>
           <div className="text-xs sm:text-[13px] font-mono-code text-zinc-400 mb-6 tracking-wide text-left">
             {t.servicesLabel}
           </div>
-        </ScrollReveal>
 
-        <div className="space-y-8 text-left">
-          <ScrollReveal delay={150} distance={25}>
+          <div className="space-y-8 text-left">
             <p className="text-xs sm:text-[13px] text-zinc-600 leading-relaxed text-left">
               {t.servicesIntro}
             </p>
-          </ScrollReveal>
 
             <div className="space-y-4 pt-4">
-              {currentServices.map((service, idx) => {
+              {currentServices.map((service) => {
                 const isExpanded = expandedService === service.number;
                 return (
-                  <ScrollReveal key={service.number} delay={idx * 100} distance={25}>
-                    <div className="border-b border-zinc-100 pb-4 transition-colors">
-                      <button
-                        onClick={() => setExpandedService(isExpanded ? '' : service.number)}
-                        className="flex items-baseline justify-between w-full text-left group cursor-pointer py-1"
-                        aria-expanded={isExpanded}
-                      >
-                        <div className="flex items-baseline gap-4">
-                          <span className={`text-xs sm:text-[13px] font-mono-code transition-colors duration-300 ${
-                            isExpanded ? 'text-zinc-900 font-semibold' : 'text-zinc-400 group-hover:text-zinc-800'
-                          }`}>
-                            {service.number}
-                          </span>
-                          <span className={`text-lg sm:text-xl font-bold tracking-tight transition-all duration-300 ${
-                            isExpanded ? 'text-black translate-x-1' : 'text-zinc-800 group-hover:text-black group-hover:translate-x-0.5'
-                          }`}>
-                            {service.title}
-                          </span>
-                        </div>
-                        <span className="text-[11px] font-mono-code text-zinc-400 hidden sm:inline-block">
-                          [{service.category}]
+                  <div key={service.number} className="border-b border-zinc-100 pb-4 transition-colors">
+                    <button
+                      onClick={() => setExpandedService(isExpanded ? '' : service.number)}
+                      className="flex items-baseline justify-between w-full text-left group cursor-pointer py-1"
+                      aria-expanded={isExpanded}
+                    >
+                      <div className="flex items-baseline gap-4">
+                        <span className={`text-xs sm:text-[13px] font-mono-code transition-colors duration-300 ${
+                          isExpanded ? 'text-zinc-900 font-semibold' : 'text-zinc-400 group-hover:text-zinc-800'
+                        }`}>
+                          {service.number}
                         </span>
-                      </button>
+                        <span className={`text-lg sm:text-xl font-bold tracking-tight transition-all duration-300 ${
+                          isExpanded ? 'text-black translate-x-1' : 'text-zinc-800 group-hover:text-black group-hover:translate-x-0.5'
+                        }`}>
+                          {service.title}
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-mono-code text-zinc-400 hidden sm:inline-block">
+                        [{service.category}]
+                      </span>
+                    </button>
 
-                      {/* Smooth CSS Grid Accordion Transition */}
-                      <div
-                        className="grid transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden"
-                        style={{
-                          gridTemplateRows: isExpanded ? '1fr' : '0fr',
-                          opacity: isExpanded ? 1 : 0,
-                        }}
-                      >
-                        <div className="min-h-0 pl-8 sm:pl-9 space-y-3 pt-2">
-                          <p className={`text-xs sm:text-[12.5px] text-zinc-600 leading-relaxed transition-all duration-500 delay-75 ${
-                            isExpanded ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
-                          }`}>
-                            {service.description}
-                          </p>
+                    {/* Smooth CSS Grid Accordion Transition */}
+                    <div
+                      className="grid transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden"
+                      style={{
+                        gridTemplateRows: isExpanded ? '1fr' : '0fr',
+                        opacity: isExpanded ? 1 : 0,
+                      }}
+                    >
+                      <div className="min-h-0 pl-8 sm:pl-9 space-y-3 pt-2">
+                        <p className={`text-xs sm:text-[12.5px] text-zinc-600 leading-relaxed transition-all duration-500 delay-75 ${
+                          isExpanded ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
+                        }`}>
+                          {service.description}
+                        </p>
 
-                          {/* Deliverables tags */}
-                          <div className={`flex flex-wrap gap-2 pt-1 transition-all duration-500 delay-100 ${
-                            isExpanded ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
-                          }`}>
-                            {service.deliverables.map((item) => (
-                              <span
-                                key={item}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-100 border border-zinc-200/80 text-[11px] font-mono-code text-zinc-700"
-                              >
-                                <span className="w-1 h-1 rounded-full bg-zinc-400"></span>
-                                <span>{item}</span>
-                              </span>
-                            ))}
-                          </div>
+                        {/* Deliverables tags */}
+                        <div className={`flex flex-wrap gap-2 pt-1 transition-all duration-500 delay-100 ${
+                          isExpanded ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
+                        }`}>
+                          {service.deliverables.map((item) => (
+                            <span
+                              key={item}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-100 border border-zinc-200/80 text-[11px] font-mono-code text-zinc-700"
+                            >
+                              <span className="w-1 h-1 rounded-full bg-zinc-400"></span>
+                              <span>{item}</span>
+                            </span>
+                          ))}
                         </div>
                       </div>
                     </div>
-                  </ScrollReveal>
+                  </div>
                 );
               })}
             </div>
 
-            <ScrollReveal delay={200} distance={20}>
-              <div className="pt-4">
-                <button
-                  onClick={() => {
-                    navigateTo('contact');
-                  }}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-zinc-300 hover:border-zinc-900 bg-white hover:bg-zinc-50 text-zinc-800 hover:text-black text-xs font-medium transition-all shadow-xs active:scale-95 cursor-pointer lowercase"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-zinc-900"></span>
-                  <span>{t.discussProject}</span>
-                </button>
-              </div>
-            </ScrollReveal>
+            <div className="pt-4">
+              <button
+                onClick={() => {
+                  navigateTo('contact');
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-zinc-300 hover:border-zinc-900 bg-white hover:bg-zinc-50 text-zinc-800 hover:text-black text-xs font-medium transition-all shadow-xs active:scale-95 cursor-pointer lowercase"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-zinc-900"></span>
+                <span>{t.discussProject}</span>
+              </button>
+            </div>
           </div>
-        </section>
+        </ScrollReveal>
+      </section>
 
       {/* ------------------------------------------------------------- */}
       {/* STATS & IMPACT IN NUMBERS SECTION */}
       {/* ------------------------------------------------------------- */}
       <section id="stats" className="py-12 px-6 sm:px-12 max-w-xl sm:max-w-2xl mx-auto my-12 text-left">
-        <ScrollReveal delay={100} distance={20}>
+        <ScrollReveal distance={28}>
           <div className="text-xs sm:text-[13px] font-mono-code text-zinc-400 mb-6 tracking-wide text-left">
             {t.statsLabel}
           </div>
-        </ScrollReveal>
 
-        <div className="space-y-8 text-left">
-          <ScrollReveal delay={150} distance={25}>
+          <div className="space-y-8 text-left">
             <p className="text-xs sm:text-[13px] text-zinc-600 leading-relaxed text-left">
               {t.statsIntro}
             </p>
-          </ScrollReveal>
 
-          {/* Stats Metric Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 text-left">
-            {currentStats.map((stat, idx) => (
-              <ScrollReveal key={stat.number + stat.label} delay={idx * 80} distance={20}>
-                <AnimatedStatCard stat={stat} idx={idx} />
-              </ScrollReveal>
-            ))}
+            {/* Stats Metric Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 text-left">
+              {currentStats.map((stat, idx) => (
+                <div key={stat.number + stat.label}>
+                  <AnimatedStatCard stat={stat} idx={idx} />
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </ScrollReveal>
       </section>
 
       {/* ------------------------------------------------------------- */}
       {/* FAQ SECTION */}
       {/* ------------------------------------------------------------- */}
       <section id="faq" className="py-12 px-6 sm:px-12 max-w-xl sm:max-w-2xl mx-auto my-12 text-left">
-        <ScrollReveal delay={100} distance={20}>
+        <ScrollReveal distance={28}>
           <div className="text-xs sm:text-[13px] font-mono-code text-zinc-400 mb-6 tracking-wide text-left">
             {t.faqLabel}
           </div>
-        </ScrollReveal>
 
-        <div className="space-y-8 text-left">
-          <ScrollReveal delay={150} distance={25}>
+          <div className="space-y-8 text-left">
             <p className="text-xs sm:text-[13px] text-zinc-600 leading-relaxed text-left">
               {t.faqIntro}
             </p>
-          </ScrollReveal>
 
-          <div className="space-y-4 pt-4 text-left">
-            {currentFaq.map((faqItem, idx) => {
-              const isExpanded = expandedFaq === faqItem.number;
+            <div className="space-y-4 pt-4 text-left">
+              {currentFaq.map((faqItem) => {
+                const isExpanded = expandedFaq === faqItem.number;
                 return (
-                  <ScrollReveal key={faqItem.number} delay={idx * 80} distance={25}>
-                    <div className="border-b border-zinc-100 pb-4 transition-colors">
-                      <button
-                        onClick={() => {
-                          uiSfx.playPop();
-                          setExpandedFaq(isExpanded ? '' : faqItem.number);
-                        }}
-                        className="flex items-baseline justify-between w-full text-left group cursor-pointer py-1"
-                        aria-expanded={isExpanded}
-                      >
-                        <div className="flex items-baseline gap-4">
-                          <span className={`text-xs sm:text-[13px] font-mono-code transition-colors duration-300 ${
-                            isExpanded ? 'text-zinc-900 font-semibold' : 'text-zinc-400 group-hover:text-zinc-800'
-                          }`}>
-                            {faqItem.number}
-                          </span>
-                          <span className={`text-base sm:text-lg font-bold tracking-tight lowercase transition-all duration-300 ${
-                            isExpanded ? 'text-black translate-x-1' : 'text-zinc-800 group-hover:text-black group-hover:translate-x-0.5'
-                          }`}>
-                            {faqItem.question}
-                          </span>
-                        </div>
-                        <span className={`text-xs font-mono-code transition-transform duration-300 text-zinc-400 ${
-                          isExpanded ? 'rotate-90 text-zinc-900 font-bold' : ''
+                  <div key={faqItem.number} className="border-b border-zinc-100 pb-4 transition-colors">
+                    <button
+                      onClick={() => {
+                        uiSfx.playPop();
+                        setExpandedFaq(isExpanded ? '' : faqItem.number);
+                      }}
+                      className="flex items-baseline justify-between w-full text-left group cursor-pointer py-1"
+                      aria-expanded={isExpanded}
+                    >
+                      <div className="flex items-baseline gap-4">
+                        <span className={`text-xs sm:text-[13px] font-mono-code transition-colors duration-300 ${
+                          isExpanded ? 'text-zinc-900 font-semibold' : 'text-zinc-400 group-hover:text-zinc-800'
                         }`}>
-                          [+]
+                          {faqItem.number}
                         </span>
-                      </button>
+                        <span className={`text-base sm:text-lg font-bold tracking-tight lowercase transition-all duration-300 ${
+                          isExpanded ? 'text-black translate-x-1' : 'text-zinc-800 group-hover:text-black group-hover:translate-x-0.5'
+                        }`}>
+                          {faqItem.question}
+                        </span>
+                      </div>
+                      <span className={`text-xs font-mono-code transition-transform duration-300 text-zinc-400 ${
+                        isExpanded ? 'rotate-90 text-zinc-900 font-bold' : ''
+                      }`}>
+                        [+]
+                      </span>
+                    </button>
 
-                      {/* Smooth CSS Grid Accordion Transition */}
-                      <div
-                        className="grid transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden"
-                        style={{
-                          gridTemplateRows: isExpanded ? '1fr' : '0fr',
-                          opacity: isExpanded ? 1 : 0,
-                        }}
-                      >
-                        <div className="min-h-0 pl-8 sm:pl-9 space-y-3 pt-2">
-                          <p className={`text-xs sm:text-[12.5px] text-zinc-600 leading-relaxed transition-all duration-500 delay-75 ${
+                    {/* Smooth CSS Grid Accordion Transition */}
+                    <div
+                      className="grid transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] overflow-hidden"
+                      style={{
+                        gridTemplateRows: isExpanded ? '1fr' : '0fr',
+                        opacity: isExpanded ? 1 : 0,
+                      }}
+                    >
+                      <div className="min-h-0 pl-8 sm:pl-9 space-y-3 pt-2">
+                        <p className={`text-xs sm:text-[12.5px] text-zinc-600 leading-relaxed transition-all duration-500 delay-75 ${
+                          isExpanded ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
+                        }`}>
+                          {faqItem.answer}
+                        </p>
+
+                        {faqItem.tags && (
+                          <div className={`flex flex-wrap gap-1.5 pt-1 transition-all duration-500 delay-100 ${
                             isExpanded ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
                           }`}>
-                            {faqItem.answer}
-                          </p>
-
-                          {faqItem.tags && (
-                            <div className={`flex flex-wrap gap-1.5 pt-1 transition-all duration-500 delay-100 ${
-                              isExpanded ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
-                            }`}>
-                              {faqItem.tags.map((tag) => (
-                                <span
-                                  key={tag}
-                                  className="text-[10px] font-mono-code text-zinc-400 lowercase"
-                                >
-                                  #{tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                            {faqItem.tags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="text-[10px] font-mono-code text-zinc-400 lowercase"
+                              >
+                                #{tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </ScrollReveal>
+                  </div>
                 );
               })}
             </div>
           </div>
-        </section>
+        </ScrollReveal>
+
+        {/* Ask the Cloud — Gemini AI Portfolio Assistant (Independent Section Reveal) */}
+        <ScrollReveal distance={28}>
+          <AskTheCloud lang={lang} />
+        </ScrollReveal>
+      </section>
 
       {/* ------------------------------------------------------------- */}
       {/* NOT THE END / EDITORIAL STATEMENT SECTION */}
       {/* ------------------------------------------------------------- */}
-      <section className="py-12 px-6 text-center max-w-2xl mx-auto space-y-7 sm:space-y-9 my-12">
-        <ScrollReveal delay={100} distance={20}>
+      <ScrollReveal distance={28}>
+        <section className="py-12 px-6 text-center max-w-2xl mx-auto space-y-7 sm:space-y-9 my-12">
           <div className="text-[12px] sm:text-xs text-zinc-400 font-mono-code lowercase tracking-wider">
             {t.buildTag || '[not the end]'}
           </div>
-        </ScrollReveal>
 
-        <ScrollReveal delay={160} distance={25}>
           <InteractiveBrandName
             shortName={t.buildBrand || 'jason'}
             fullName={t.buildFullName || 'steward jason liuwindra'}
           />
-        </ScrollReveal>
 
-        <ScrollReveal delay={220} distance={20}>
           <div className="space-y-3 pt-2 sm:pt-4">
             <h3 className="text-xl sm:text-2xl md:text-3xl text-zinc-900 font-light tracking-tight leading-snug max-w-md mx-auto lowercase">
               {t.buildHeading}
@@ -1069,8 +1053,8 @@ export default function App() {
               {t.buildSub}
             </p>
           </div>
-        </ScrollReveal>
-      </section>
+        </section>
+      </ScrollReveal>
     </>
   ) : currentPage === 'aboutme' ? (
     <AboutMePage
