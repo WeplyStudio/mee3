@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type, ThinkingLevel } from '@google/genai';
+import { GoogleGenAI, Type } from '@google/genai';
 
 const CLOUD_SYSTEM_INSTRUCTION = `You are "the cloud" — a tiny 8x8 pixel-sky tile living on Steward Jason Liuwindra's (Jason's) portfolio website (https://jayss.id).
 
@@ -91,7 +91,7 @@ export default async function handler(req: any, res: any) {
 
     if (INJECTION_PATTERNS.some((rx) => rx.test(rawPrompt))) {
       const refusal = getInjectionRefusal(lang);
-      return res.status(200).json({ ok: true, ...refusal, model: 'gemini-3.1-flash-lite' });
+      return res.status(200).json({ ok: true, ...refusal, model: 'gemini-3.5-flash-lite' });
     }
 
     const apiKey = process.env.CLOUD_GEMINI_API_KEY?.trim() || process.env.GEMINI_API_KEY?.trim();
@@ -109,12 +109,18 @@ export default async function handler(req: any, res: any) {
     });
 
     const sandboxedPrompt = `Default language if ambiguous: ${lang}\n<visitor_query>${rawPrompt}</visitor_query>`;
-    const candidateModels = ['gemini-3.1-flash-lite', 'gemini-2.5-flash', 'gemini-flash-latest'];
+    const candidateModels = [
+      'gemini-3.5-flash-lite',
+      'gemini-3.1-flash-lite',
+      'gemini-2.5-flash-lite',
+      'gemini-3.8-flash',
+      'gemini-flash-latest',
+    ];
     let lastError: unknown = null;
 
     for (const modelName of candidateModels) {
       const controller = new AbortController();
-      const timeoutMs = modelName.startsWith('gemma-') ? 3500 : 5000;
+      const timeoutMs = 5000;
       const timer = setTimeout(() => controller.abort(), timeoutMs);
       try {
         const response = await ai.models.generateContent({
@@ -122,9 +128,6 @@ export default async function handler(req: any, res: any) {
           contents: sandboxedPrompt,
           config: {
             abortSignal: controller.signal,
-            ...(modelName.startsWith('gemini-3')
-              ? { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } }
-              : {}),
             systemInstruction: CLOUD_SYSTEM_INSTRUCTION,
             responseMimeType: 'application/json',
             responseSchema: {

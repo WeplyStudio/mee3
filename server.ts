@@ -5,7 +5,7 @@ import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import compression from 'compression';
 import initSqlJs, { Database } from 'sql.js';
-import { GoogleGenAI, Type, ThinkingLevel } from '@google/genai';
+import { GoogleGenAI, Type } from '@google/genai';
 
 const SYSTEM_RUNTIME_GEMINI_KEY = process.env.GEMINI_API_KEY;
 dotenv.config();
@@ -370,7 +370,7 @@ FACTS ABOUT JASON (STEWARD JASON LIUWINDRA):
 - Workflow & Contact: Designs in Figma and codes in React, Next.js, TypeScript, Tailwind CSS, Node.js, and GSAP. Sprints take 3–6 weeks (MVP) or 2–3 months (full platform). Reachable via the /contact page, Instagram (@jasonn.doc), or GitHub.
 
 RESPONSE LENGTH & FORMAT RULES:
-- Length: 2 to 4 natural, conversational sentences (around 35–65 words). Fast to read, warm, and full of personality. No markdown formatting or bullet lists.
+- Length: 2 to 4 natural, conversational sentences (around 50-75 words). Fast to read, warm, and full of personality. No markdown formatting or bullet lists.
 - Language: Match the visitor's language naturally (Indonesian, English, German, or Japanese).
 - Return JSON matching the schema with "reply" and 3 short, curious follow-up "suggestions" (under 38 chars each).`;
 
@@ -429,7 +429,7 @@ app.post('/api/ask-cloud', async (req: Request, res: Response) => {
     // Layer 1: Instant anti-prompt-injection & off-topic code request guard
     if (INJECTION_PATTERNS.some((rx) => rx.test(rawPrompt))) {
       const refusal = getInjectionRefusal(lang);
-      return res.json({ ok: true, ...refusal, model: 'gemini-3.1-flash-lite' });
+      return res.json({ ok: true, ...refusal, model: 'gemini-3.5-flash-lite' });
     }
 
     // Check fast in-memory cache
@@ -453,7 +453,13 @@ app.post('/api/ask-cloud', async (req: Request, res: Response) => {
       return res.status(500).json({ ok: false, error: 'API key is not configured on the server.' });
     }
 
-    const candidateModels = ['gemini-3.1-flash-lite', 'gemini-2.5-flash', 'gemini-flash-latest'];
+    const candidateModels = [
+      'gemini-3.5-flash-lite',
+      'gemini-3.1-flash-lite',
+      'gemini-2.5-flash-lite',
+      'gemini-3.8-flash',
+      'gemini-flash-latest',
+    ];
 
     const sandboxedPrompt = `Default language if ambiguous: ${lang}\n<visitor_query>${rawPrompt}</visitor_query>`;
 
@@ -471,7 +477,7 @@ app.post('/api/ask-cloud', async (req: Request, res: Response) => {
 
       for (const modelName of candidateModels) {
         const controller = new AbortController();
-        const timeoutMs = modelName.startsWith('gemma-') ? 3500 : 5000;
+        const timeoutMs = 5000;
         const timer = setTimeout(() => controller.abort(), timeoutMs);
         try {
           const response = await ai.models.generateContent({
@@ -479,9 +485,6 @@ app.post('/api/ask-cloud', async (req: Request, res: Response) => {
             contents: sandboxedPrompt,
             config: {
               abortSignal: controller.signal,
-              ...(modelName.startsWith('gemini-3')
-                ? { thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL } }
-                : {}),
               systemInstruction: CLOUD_SYSTEM_INSTRUCTION,
               responseMimeType: 'application/json',
               responseSchema: {
