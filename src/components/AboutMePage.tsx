@@ -130,8 +130,146 @@ export const AboutMePage: React.FC<Props> = ({
     checkmark: useRef<SVGSVGElement>(null)
   };
 
+  // Refs for the 3-stage scroll-linked photo choreography (Hero -> [who am i] -> [what i do])
+  const storyStageRef = useRef<HTMLDivElement>(null);
+  const slot1LeftRef = useRef<HTMLDivElement>(null);
+  const slot1RightRef = useRef<HTMLDivElement>(null);
+  const slot2LeftRef = useRef<HTMLDivElement>(null);
+  const slot2RightRef = useRef<HTMLDivElement>(null);
+  const slot3LeftRef = useRef<HTMLDivElement>(null);
+  const slot3RightRef = useRef<HTMLDivElement>(null);
+  const floatingLeftRef = useRef<HTMLDivElement>(null);
+  const floatingRightRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
+  }, []);
+
+  useEffect(() => {
+    let rafId: number;
+    let currentProgress = 0; // 0 = Stage 1 (Hero), 1 = Stage 2 ([who am i]), 2 = Stage 3 ([what i do])
+    let initialized = false;
+
+    const easeInOutCubic = (x: number) =>
+      x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+
+    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+    const getSlotMetrics = (el: HTMLElement, stageRect: DOMRect) => {
+      const r = el.getBoundingClientRect();
+      return {
+        x: r.left - stageRect.left,
+        y: r.top - stageRect.top,
+        w: r.width,
+        h: r.height,
+        docCenterY: r.top + window.scrollY + r.height * 0.5,
+      };
+    };
+
+    const updatePositions = () => {
+      const stage = storyStageRef.current;
+      const s1L = slot1LeftRef.current;
+      const s1R = slot1RightRef.current;
+      const s2L = slot2LeftRef.current;
+      const s2R = slot2RightRef.current;
+      const s3L = slot3LeftRef.current;
+      const s3R = slot3RightRef.current;
+      const fL = floatingLeftRef.current;
+      const fR = floatingRightRef.current;
+
+      if (stage && s1L && s1R && s2L && s2R && s3L && s3R && fL && fR) {
+        const stageRect = stage.getBoundingClientRect();
+        const m1L = getSlotMetrics(s1L, stageRect);
+        const m1R = getSlotMetrics(s1R, stageRect);
+        const m2L = getSlotMetrics(s2L, stageRect);
+        const m2R = getSlotMetrics(s2R, stageRect);
+        const m3L = getSlotMetrics(s3L, stageRect);
+        const m3R = getSlotMetrics(s3R, stageRect);
+
+        const vh = window.innerHeight;
+        const scrollY = window.scrollY;
+
+        // Scroll scrollY points where each stage is centered in the viewport
+        const stage1DocY = (m1L.docCenterY + m1R.docCenterY) * 0.5;
+        const stage2DocY = (m2L.docCenterY + m2R.docCenterY) * 0.5;
+        const stage3DocY = (m3L.docCenterY + m3R.docCenterY) * 0.5;
+
+        const start12 = Math.max(10, stage1DocY - vh * 0.45);
+        const anchor2Scroll = stage2DocY - vh * 0.5;
+        const end12 = Math.max(start12 + 80, anchor2Scroll - 30);
+
+        const start23 = anchor2Scroll + 30;
+        const anchor3Scroll = stage3DocY - vh * 0.5;
+        const end23 = Math.max(start23 + 80, anchor3Scroll - 20);
+
+        let targetProgress = 0;
+        if (scrollY <= start12) {
+          targetProgress = 0;
+        } else if (scrollY < end12) {
+          const raw = (scrollY - start12) / Math.max(1, end12 - start12);
+          targetProgress = easeInOutCubic(Math.min(1, Math.max(0, raw)));
+        } else if (scrollY <= start23) {
+          targetProgress = 1;
+        } else if (scrollY < end23) {
+          const raw = (scrollY - start23) / Math.max(1, end23 - start23);
+          targetProgress = 1 + easeInOutCubic(Math.min(1, Math.max(0, raw)));
+        } else {
+          targetProgress = 2;
+        }
+
+        if (!initialized) {
+          currentProgress = targetProgress;
+          initialized = true;
+        } else {
+          currentProgress += (targetProgress - currentProgress) * 0.16;
+          if (Math.abs(targetProgress - currentProgress) < 0.001) {
+            currentProgress = targetProgress;
+          }
+        }
+
+        let leftX: number, leftY: number, leftW: number, leftH: number;
+        let rightX: number, rightY: number, rightW: number, rightH: number, rightRot: number;
+
+        if (currentProgress <= 1) {
+          const t = currentProgress;
+          leftX = lerp(m1L.x, m2L.x, t);
+          leftY = lerp(m1L.y, m2L.y, t);
+          leftW = lerp(m1L.w, m2L.w, t);
+          leftH = lerp(m1L.h, m2L.h, t);
+
+          rightX = lerp(m1R.x, m2R.x, t);
+          rightY = lerp(m1R.y, m2R.y, t);
+          rightW = lerp(m1R.w, m2R.w, t);
+          rightH = lerp(m1R.h, m2R.h, t);
+          rightRot = lerp(-2.2, 0, t);
+        } else {
+          const t = currentProgress - 1;
+          leftX = lerp(m2L.x, m3L.x, t);
+          leftY = lerp(m2L.y, m3L.y, t);
+          leftW = lerp(m2L.w, m3L.w, t);
+          leftH = lerp(m2L.h, m3L.h, t);
+
+          rightX = lerp(m2R.x, m3R.x, t);
+          rightY = lerp(m2R.y, m3R.y, t);
+          rightW = lerp(m2R.w, m3R.w, t);
+          rightH = lerp(m2R.h, m3R.h, t);
+          rightRot = 0;
+        }
+
+        fL.style.width = `${leftW}px`;
+        fL.style.height = `${leftH}px`;
+        fL.style.transform = `translate3d(${leftX}px, ${leftY}px, 0)`;
+
+        fR.style.width = `${rightW}px`;
+        fR.style.height = `${rightH}px`;
+        fR.style.transform = `translate3d(${rightX}px, ${rightY}px, 0) rotate(${rightRot}deg)`;
+      }
+
+      rafId = requestAnimationFrame(updatePositions);
+    };
+
+    rafId = requestAnimationFrame(updatePositions);
+    return () => cancelAnimationFrame(rafId);
   }, []);
 
   const handlePointerDown = (id: 'puzzle' | 'pen' | 'checkmark', e: React.PointerEvent<SVGSVGElement>) => {
@@ -387,133 +525,169 @@ export const AboutMePage: React.FC<Props> = ({
   return (
     <div className="min-h-screen bg-white text-[#121212] pt-24 pb-20 px-4 sm:px-8 max-w-5xl mx-auto flex flex-col justify-between relative">
       
-      <div className="space-y-[96px] sm:space-y-[128px] md:space-y-[144px]">
+      <div className="space-y-[250px]">
         
-        {/* SECTION 1: EDITORIAL 3-PHOTO COLLAGE AS IN THE SCREENSHOT & VIDEO */}
-        <ScrollReveal distance={28}>
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 items-start my-6 sm:my-10">
-            {/* Column 1 (Left) */}
-            <div className="md:col-span-4 space-y-6 flex flex-col justify-start md:pt-12">
+        {/* 3-STAGE SCROLL-LINKED PHOTO CHOREOGRAPHY (HERO -> [WHO AM I] -> [WHAT I DO]) */}
+        <div
+          ref={storyStageRef}
+          data-gsap-custom="true"
+          className="relative"
+        >
+          {/* FLOATING MORPHING PHOTO 1 (LEFT / MIDDLE IN STAGE 1 -> FAR LEFT IN STAGE 2 -> INNER LEFT IN STAGE 3) */}
+          <div
+            ref={floatingLeftRef}
+            className="absolute top-0 left-0 z-20 overflow-hidden border border-zinc-200/60 shadow-md bg-zinc-100 will-change-transform origin-top-left"
+          >
+            <ImageTooltip isMe={true} lang={lang} className="w-full h-full">
+              <img
+                src="/profile-3.webp"
+                srcSet="/profile-3-400.webp 400w, /profile-3-600.webp 600w, /profile-3.webp 800w"
+                sizes="(max-width: 640px) 50vw, 360px"
+                alt="steward jason"
+                fetchPriority="high"
+                decoding="async"
+                className="w-full h-full object-cover grayscale contrast-110 hover:scale-105 transition-transform duration-700"
+              />
+            </ImageTooltip>
+          </div>
 
-              {/* Typography statement below top-left photo */}
-              <div className="space-y-4 pt-1">
-                <h1 className="text-3xl sm:text-4xl font-normal tracking-tight text-[#111111] leading-tight">
-                  i <span className="font-serif italic text-zinc-400 font-light">{t.trust}</span> my eye, not my hands.
-                </h1>
-                <p className="text-xs sm:text-[13px] text-zinc-400 font-mono-code leading-relaxed">
-                  {t.catchWhatMostSkip}
-                </p>
+          {/* FLOATING MORPHING PHOTO 2 (RIGHT TILTED IN STAGE 1 -> FAR RIGHT IN STAGE 2 -> INNER RIGHT IN STAGE 3) */}
+          <div
+            ref={floatingRightRef}
+            className="absolute top-0 left-0 z-20 overflow-hidden border border-zinc-200/60 shadow-md bg-zinc-900 will-change-transform origin-center"
+          >
+            <ImageTooltip isMe={true} lang={lang} className="w-full h-full">
+              <img
+                src={siteImages?.aboutImage || '/profile-2.webp'}
+                srcSet={siteImages?.aboutImage ? undefined : '/profile-2-400.webp 400w, /profile-2.webp 600w'}
+                sizes="(max-width: 640px) 50vw, 360px"
+                alt="steward jason portrait"
+                fetchPriority="high"
+                decoding="async"
+                className="w-full h-full object-cover grayscale contrast-115 hover:scale-105 transition-transform duration-700"
+              />
+            </ImageTooltip>
+          </div>
+
+          {/* STAGE 1: EDITORIAL COLLAGE AT TOP OF ABOUT ME (FULL VIEWPORT SCENE + EXTRA SEPARATION BEFORE STAGE 2) */}
+          <div className="min-h-[82vh] flex items-center py-6 sm:py-10 mb-[320px] sm:mb-[360px]">
+            <div className="w-full grid grid-cols-2 md:grid-cols-12 gap-6 sm:gap-8 md:gap-12 items-start">
+              {/* Column 1 (Left Statement) */}
+              <div className="col-span-2 md:col-span-4 space-y-6 flex flex-col justify-start md:pt-16">
+                <ScrollReveal distance={24}>
+                  <div className="space-y-4 pt-1">
+                    <h1 className="text-3xl sm:text-4xl font-normal tracking-tight text-[#111111] leading-tight">
+                      i <span className="font-serif italic text-zinc-400 font-light">{t.trust}</span> my eye, not my hands.
+                    </h1>
+                    <p className="text-xs sm:text-[13px] text-zinc-400 font-mono-code leading-relaxed">
+                      {t.catchWhatMostSkip}
+                    </p>
+                  </div>
+                </ScrollReveal>
               </div>
-            </div>
 
-            {/* Column 2 (Middle) */}
-            <div className="md:col-span-4 flex flex-col justify-start md:pt-6">
-              <div className="aspect-[3/4] w-full sm:w-[90%] mx-auto overflow-hidden border border-zinc-200/50 shadow-md">
-                <ImageTooltip isMe={true} lang={lang} className="w-full h-full">
-                  <ShutterRevealImage
-                    src="/profile-3.webp"
-                    srcSet="/profile-3-400.webp 400w, /profile-3-600.webp 600w, /profile-3.webp 800w"
-                    sizes="(max-width: 640px) 100vw, 360px"
-                    alt="steward jason child"
-                    delay={0}
-                    className="w-full h-full"
-                    imgClassName="w-full h-full object-cover grayscale contrast-110 hover:scale-105 transition-transform duration-700"
-                  />
-                </ImageTooltip>
+              {/* Column 2 (Stage 1 Slot Left) */}
+              <div className="col-span-1 md:col-span-4 flex flex-col justify-start md:pt-4">
+                <div
+                  ref={slot1LeftRef}
+                  className="aspect-[3/4] w-full sm:w-[88%] mx-auto pointer-events-none opacity-0"
+                  aria-hidden="true"
+                />
               </div>
-            </div>
 
-            {/* Column 3 (Right) - Offset nicely on desktop */}
-            <div className="hidden md:flex md:col-span-4 flex-col justify-start md:pt-20">
-              <div className="aspect-[3/4] w-full overflow-hidden border border-zinc-200/50 shadow-xs rotate-[-1.5deg] hover:rotate-0 transition-transform duration-700">
-                <ImageTooltip isMe={true} lang={lang} className="w-full h-full">
-                  <ShutterRevealImage
-                    src={siteImages?.aboutImage || '/profile-2.webp'}
-                    srcSet={siteImages?.aboutImage ? undefined : '/profile-2-400.webp 400w, /profile-2.webp 600w'}
-                    sizes="360px"
-                    alt="steward jason portrait"
-                    delay={0.1}
-                    className="w-full h-full"
-                    imgClassName="w-full h-full object-cover grayscale contrast-115 hover:scale-105 transition-transform duration-700"
-                  />
-                </ImageTooltip>
+              {/* Column 3 (Stage 1 Slot Right - Offset lower on desktop) */}
+              <div className="col-span-1 md:col-span-4 flex flex-col justify-start pt-8 md:pt-20">
+                <div
+                  ref={slot1RightRef}
+                  className="aspect-[3/4] w-full sm:w-[88%] mx-auto pointer-events-none opacity-0"
+                  aria-hidden="true"
+                />
               </div>
             </div>
           </div>
-        </ScrollReveal>
 
-        {/* SECTION 3: [who am i] */}
-        <ScrollReveal distance={28}>
+          {/* STAGE 2: [who am i] FLANKED BY THE TWO PHOTOS ON FAR LEFT & FAR RIGHT */}
+          <div className="py-4 sm:py-6 mb-[250px]">
+            <div className="w-full flex flex-col md:flex-row items-center justify-between gap-8 md:gap-10">
+              {/* Far Left Slot 2 */}
+              <div className="w-full md:w-auto flex justify-start md:block">
+                <div
+                  ref={slot2LeftRef}
+                  className="w-24 sm:w-28 md:w-[112px] aspect-[3/4] shrink-0 pointer-events-none opacity-0"
+                  aria-hidden="true"
+                />
+              </div>
+
+              {/* Center [who am i] Content */}
+              <div className="flex-1 max-w-2xl mx-auto w-full px-1 sm:px-4">
+                <ScrollReveal distance={24}>
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-10 items-start">
+                    <div className="md:col-span-4 font-mono-code text-xs sm:text-[13px] text-zinc-400 lowercase tracking-wider text-left">
+                      {t.whoAmITitle}
+                    </div>
+                    <div className="md:col-span-8">
+                      <div className="text-[13.5px] sm:text-sm text-zinc-700 leading-relaxed font-normal lowercase space-y-4 text-left">
+                        <p>
+                          <span className="font-semibold text-zinc-900">hi</span>{' '}
+                          <span className="inline-block animate-wave origin-[70%_70%] text-base">👋</span>{' '}
+                          <span className="text-zinc-400">—</span>{' '}
+                          {t.whoAmIContent}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </ScrollReveal>
+              </div>
+
+              {/* Far Right Slot 2 */}
+              <div className="w-full md:w-auto flex justify-end md:block">
+                <div
+                  ref={slot2RightRef}
+                  className="w-24 sm:w-28 md:w-[112px] aspect-[3/4] shrink-0 pointer-events-none opacity-0"
+                  aria-hidden="true"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* STAGE 3: [what i do] TIGHTLY FRAMED BY THE TWO PHOTOS IN THE CENTER */}
           <div className="py-4 sm:py-6">
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-16 max-w-4xl mx-auto items-start">
-              <div className="md:col-span-4 font-mono-code text-xs sm:text-[13px] text-zinc-400 lowercase tracking-wider text-left">
-                {t.whoAmITitle}
+            <div className="w-full flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12 lg:gap-16 max-w-3xl mx-auto">
+              {/* Inner Left Slot 3 */}
+              <div className="flex justify-center">
+                <div
+                  ref={slot3LeftRef}
+                  className="w-28 sm:w-[120px] aspect-[3/4] shrink-0 pointer-events-none opacity-0"
+                  aria-hidden="true"
+                />
               </div>
-              <div className="md:col-span-8">
-                <div className="text-[13.5px] sm:text-sm text-zinc-700 leading-relaxed font-normal lowercase space-y-4 text-left">
-                  <p>
-                    <span className="font-semibold text-zinc-900">hi</span>{' '}
-                    <span className="inline-block animate-wave origin-[70%_70%] text-base">👋</span>{' '}
-                    <span className="text-zinc-400">—</span>{' '}
-                    {t.whoAmIContent}
-                  </p>
-                </div>
+
+              {/* Center [what i do] Description */}
+              <div className="max-w-xs sm:max-w-[310px] text-center px-2 py-4 z-10">
+                <ScrollReveal distance={24}>
+                  <div className="space-y-4">
+                    <div className="font-mono-code text-[11px] text-zinc-400 lowercase tracking-widest">
+                      {t.whatIDoTitle}
+                    </div>
+                    <div className="space-y-4 text-xs sm:text-[13px] leading-relaxed text-zinc-600 font-normal lowercase">
+                      <p className="font-semibold text-zinc-900 leading-relaxed">{t.whatIDoContentMain}</p>
+                      <p className="text-zinc-400 leading-relaxed">{t.whatIDoContentSub}</p>
+                    </div>
+                  </div>
+                </ScrollReveal>
+              </div>
+
+              {/* Inner Right Slot 3 */}
+              <div className="flex justify-center">
+                <div
+                  ref={slot3RightRef}
+                  className="w-28 sm:w-[120px] aspect-[3/4] shrink-0 pointer-events-none opacity-0"
+                  aria-hidden="true"
+                />
               </div>
             </div>
           </div>
-        </ScrollReveal>
-
-        {/* SECTION 4: [what i do] COLLAGE & DESCRIPTION IN THE CENTER */}
-        <ScrollReveal distance={28}>
-          <div className="py-4 sm:py-6">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative py-4">
-              
-              {/* Left Photo Pair (4 cols) */}
-              <div className="lg:col-span-4 flex items-center justify-center gap-4 relative">
-                <div className="w-24 sm:w-28 aspect-[3/4] bg-zinc-200 overflow-hidden relative border border-zinc-200 shadow-xs z-10 mt-8">
-                  <ImageTooltip isMe={true} lang={lang} className="w-full h-full">
-                    <ShutterRevealImage
-                      src={siteImages?.aboutImage || '/profile-2.webp'}
-                      srcSet={siteImages?.aboutImage ? undefined : '/profile-2-400.webp 400w, /profile-2.webp 600w'}
-                      sizes="120px"
-                      alt="smiling portrait"
-                      className="w-full h-full"
-                      imgClassName="w-full h-full object-cover grayscale"
-                    />
-                  </ImageTooltip>
-                </div>
-              </div>
-
-              {/* Center: Description Text */}
-              <div className="lg:col-span-4 text-center px-4 space-y-4 z-10 bg-white/90 py-4">
-                <div className="font-mono-code text-[11px] text-zinc-400 lowercase tracking-widest">
-                  {t.whatIDoTitle}
-                </div>
-                <div className="space-y-4 text-xs sm:text-[13px] leading-relaxed text-zinc-600 font-normal lowercase">
-                  <p className="font-medium text-zinc-900 leading-normal">{t.whatIDoContentMain}</p>
-                  <p className="text-zinc-500 leading-normal">{t.whatIDoContentSub}</p>
-                </div>
-              </div>
-
-              {/* Right Photo Pair (4 cols) */}
-              <div className="lg:col-span-4 flex items-center justify-center gap-4 relative">
-                <div className="w-24 sm:w-28 aspect-[3/4] bg-zinc-200 overflow-hidden relative border border-zinc-200 shadow-xs z-10">
-                  <ImageTooltip isMe={true} lang={lang} className="w-full h-full">
-                    <ShutterRevealImage
-                      src={siteImages?.heroImage || '/profile-3.webp'}
-                      srcSet={siteImages?.heroImage ? undefined : '/profile-3-400.webp 400w, /profile-3-600.webp 600w, /profile-3.webp 800w'}
-                      sizes="120px"
-                      alt="clay mask selfie"
-                      className="w-full h-full"
-                      imgClassName="w-full h-full object-cover grayscale contrast-125"
-                    />
-                  </ImageTooltip>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </ScrollReveal>
+        </div>
 
         {/* SECTION 5: [selected works] SUMMARY */}
         <ScrollReveal distance={28}>

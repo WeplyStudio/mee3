@@ -21,10 +21,11 @@ export const GsapGlobalAnimator: React.FC<Props> = ({ pageKey, lang }) => {
           if (el.dataset.gsapAnimated === 'true') return;
           el.dataset.gsapAnimated = 'true';
 
-          // Never override mix-blend-difference, infinite marquee, or intentionally hidden elements
+          // Never override mix-blend-difference, infinite marquee, custom GSAP stage, or intentionally hidden elements
           if (
             el.closest('.mix-blend-difference') ||
             el.closest('.animate-marquee-infinite') ||
+            el.closest('[data-gsap-custom="true"]') ||
             el.classList.contains('opacity-0') ||
             el.closest('.opacity-0') ||
             el.closest('.max-h-0')
@@ -89,6 +90,7 @@ export const GsapGlobalAnimator: React.FC<Props> = ({ pageKey, lang }) => {
           el.dataset.gsapObserved === 'true' ||
           el.closest('.mix-blend-difference') ||
           el.closest('.animate-marquee-infinite') ||
+          el.closest('[data-gsap-custom="true"]') ||
           el.classList.contains('opacity-0') ||
           el.closest('.opacity-0') ||
           el.closest('.max-h-0')

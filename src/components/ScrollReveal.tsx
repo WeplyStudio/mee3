@@ -106,6 +106,7 @@ export const ScrollReveal: React.FC<Props> = ({
         if (
           node.closest('.mix-blend-difference') ||
           node.closest('.animate-marquee-infinite') ||
+          node.closest('[data-gsap-custom="true"]') ||
           node.classList.contains('opacity-0') ||
           node.closest('.opacity-0') ||
           node.closest('.max-h-0')
