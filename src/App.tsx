@@ -28,13 +28,12 @@ import { GsapGlobalAnimator } from './components/GsapGlobalAnimator';
 import { ambientSound, setupGlobalUISFX, uiSfx } from './utils/audio';
 import { Language, Project } from './types';
 
-// Code-Split secondary routes and modals to shrink initial bundle size and boost render speed
-const AboutMePage = lazy(() => import('./components/AboutMePage').then(m => ({ default: m.AboutMePage })));
-const ProjectsPage = lazy(() => import('./components/ProjectsPage').then(m => ({ default: m.ProjectsPage })));
-const ContactPage = lazy(() => import('./components/ContactPage').then(m => ({ default: m.ContactPage })));
-const ProjectDetailPage = lazy(() => import('./components/ProjectDetailPage').then(m => ({ default: m.ProjectDetailPage })));
-const BioPage = lazy(() => import('./components/BioPage').then(m => ({ default: m.BioPage })));
-const NotFoundPage = lazy(() => import('./components/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
+import { AboutMePage } from './components/AboutMePage';
+import { ProjectsPage } from './components/ProjectsPage';
+import { ContactPage } from './components/ContactPage';
+import { ProjectDetailPage } from './components/ProjectDetailPage';
+import { BioPage } from './components/BioPage';
+import { NotFoundPage } from './components/NotFoundPage';
 const ContactModal = lazy(() => import('./components/ContactModal').then(m => ({ default: m.ContactModal })));
 
 import {
@@ -286,10 +285,9 @@ export default function App() {
       clearTimeout(blindsTimerRef.current);
     }
 
-    // Brief, smooth pause (380ms) behind curtains so the new page mounts cleanly, then open
     blindsTimerRef.current = setTimeout(() => {
       setBlindsStage('opening');
-    }, 380);
+    }, 16);
   }, []);
 
   // Called when all curtain blinds have fully opened and revealed the new page
@@ -521,12 +519,12 @@ export default function App() {
   const localizedActiveProject = activeProject ? (currentProjects.find((p) => p.id === activeProject.id) || activeProject) : null;
 
   return (
-    <div className="min-h-screen bg-white text-[#121212] font-sans selection:bg-black selection:text-white relative">
+    <div id="page-transition-viewport" className="min-h-screen bg-white text-[#121212] font-sans selection:bg-black selection:text-white relative">
       <GsapGlobalAnimator pageKey={`${currentPage}-${activeProject?.id || ''}`} lang={lang} />
       {/* ------------------------------------------------------------- */}
       {/* TOP FLOATING / STICKY HEADER */}
       {/* ------------------------------------------------------------- */}
-      <header className="fixed top-0 left-0 right-0 z-40 px-4 sm:px-8 py-3.5 sm:py-5 flex items-center justify-between pointer-events-none transition-all">
+      <header className="fixed top-0 left-0 right-0 z-40 px-4 sm:px-8 py-3.5 sm:py-5 flex items-center justify-between pointer-events-none">
         {/* Left: Spacer to balance language switch button */}
         <div className="flex-1 flex justify-start items-center" />
 
@@ -594,7 +592,7 @@ export default function App() {
       {/* ------------------------------------------------------------- */}
       {/* MAIN CONTENT LAYER (SLIDES UP OVER STICKY FOOTER REVEAL) */}
       {/* ------------------------------------------------------------- */}
-      <div className={`relative z-10 bg-white min-h-screen ${currentPage === '404' ? 'pb-0 flex flex-col justify-center' : 'pb-16'}`}>
+      <div id="page-transition-content" className={`relative z-10 bg-white min-h-screen ${currentPage === '404' ? 'pb-0 flex flex-col justify-center' : 'pb-16'}`}>
         <Suspense fallback={<div className="min-h-screen bg-white" />}>
           {currentPage === 'home' ? (
             <>
@@ -1213,11 +1211,13 @@ export default function App() {
       {currentPage !== 'admin' && currentPage !== '404' && <BottomScrollProgress currentPage={currentPage} />}
 
       {/* ------------------------------------------------------------- */}
-      {/* MOTION CURTAIN BLINDS PAGE TRANSITION OVERLAY */}
+      {/* VIEWPORT ZOOM & VERTICAL SLIDE PAGE TRANSITION OVERLAY */}
       {/* ------------------------------------------------------------- */}
       <CurtainBlindsTransition
         stage={blindsStage}
         targetPageName={transitionTitle}
+        lang={lang}
+        menuLabel={t.menu}
         onClosed={handleBlindsClosed}
         onOpened={handleBlindsOpened}
       />

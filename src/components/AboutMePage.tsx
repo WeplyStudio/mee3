@@ -155,14 +155,18 @@ export const AboutMePage: React.FC<Props> = ({
 
     const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
-    const getSlotMetrics = (el: HTMLElement, stageRect: DOMRect) => {
+    const getSlotMetrics = (el: HTMLElement, stage: HTMLElement, stageRect: DOMRect, scaleX: number, scaleY: number) => {
       const r = el.getBoundingClientRect();
+      const localX = (r.left - stageRect.left) / scaleX;
+      const localY = (r.top - stageRect.top) / scaleY;
+      const localW = r.width / scaleX;
+      const localH = r.height / scaleY;
       return {
-        x: r.left - stageRect.left,
-        y: r.top - stageRect.top,
-        w: r.width,
-        h: r.height,
-        docCenterY: r.top + window.scrollY + r.height * 0.5,
+        x: localX,
+        y: localY,
+        w: localW,
+        h: localH,
+        docCenterY: localY + stage.offsetTop + localH * 0.5,
       };
     };
 
@@ -179,12 +183,14 @@ export const AboutMePage: React.FC<Props> = ({
 
       if (stage && s1L && s1R && s2L && s2R && s3L && s3R && fL && fR) {
         const stageRect = stage.getBoundingClientRect();
-        const m1L = getSlotMetrics(s1L, stageRect);
-        const m1R = getSlotMetrics(s1R, stageRect);
-        const m2L = getSlotMetrics(s2L, stageRect);
-        const m2R = getSlotMetrics(s2R, stageRect);
-        const m3L = getSlotMetrics(s3L, stageRect);
-        const m3R = getSlotMetrics(s3R, stageRect);
+        const scaleX = stage.offsetWidth > 0 ? stageRect.width / stage.offsetWidth : 1;
+        const scaleY = stage.offsetHeight > 0 ? stageRect.height / stage.offsetHeight : 1;
+        const m1L = getSlotMetrics(s1L, stage, stageRect, scaleX, scaleY);
+        const m1R = getSlotMetrics(s1R, stage, stageRect, scaleX, scaleY);
+        const m2L = getSlotMetrics(s2L, stage, stageRect, scaleX, scaleY);
+        const m2R = getSlotMetrics(s2R, stage, stageRect, scaleX, scaleY);
+        const m3L = getSlotMetrics(s3L, stage, stageRect, scaleX, scaleY);
+        const m3R = getSlotMetrics(s3R, stage, stageRect, scaleX, scaleY);
 
         const vh = window.innerHeight;
         const scrollY = window.scrollY;

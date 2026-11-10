@@ -7,7 +7,7 @@ interface Props {
 }
 
 const SELECTOR_ALL_ANIMATABLE =
-  'header button, header a, footer h1, footer h2, footer h3, footer p, footer a, footer button, footer span, h1, h2, h3, h4, h5, h6, p, li, blockquote, label, button, a, input, textarea, img, svg, .font-mono-code';
+  'footer h1, footer h2, footer h3, footer p, footer a, footer button, footer span, h1, h2, h3, h4, h5, h6, p, li, blockquote, label, button, a, input, textarea, img, svg, .font-mono-code';
 
 export const GsapGlobalAnimator: React.FC<Props> = ({ pageKey, lang }) => {
   useEffect(() => {
@@ -21,8 +21,10 @@ export const GsapGlobalAnimator: React.FC<Props> = ({ pageKey, lang }) => {
           if (el.dataset.gsapAnimated === 'true') return;
           el.dataset.gsapAnimated = 'true';
 
-          // Never override mix-blend-difference, infinite marquee, custom GSAP stage, or intentionally hidden elements
+          // Never override header, mix-blend-difference, infinite marquee, custom GSAP stage, or intentionally hidden elements
           if (
+            el.closest('header') ||
+            el.closest('[data-transition-clone="true"]') ||
             el.closest('.mix-blend-difference') ||
             el.closest('.animate-marquee-infinite') ||
             el.closest('[data-gsap-custom="true"]') ||
@@ -88,6 +90,8 @@ export const GsapGlobalAnimator: React.FC<Props> = ({ pageKey, lang }) => {
         if (
           el.dataset.gsapHandled === 'true' ||
           el.dataset.gsapObserved === 'true' ||
+          el.closest('header') ||
+          el.closest('[data-transition-clone="true"]') ||
           el.closest('.mix-blend-difference') ||
           el.closest('.animate-marquee-infinite') ||
           el.closest('[data-gsap-custom="true"]') ||

@@ -72,7 +72,7 @@ export const Footer: React.FC<FooterProps> = ({
               <div className="space-y-1">
                 <button
                   onClick={onOpenContact}
-                  className="group inline-flex items-center gap-3 text-2xl sm:text-3.5xl font-extrabold tracking-tight text-zinc-900 hover:text-blue-700 transition-all duration-300 text-left cursor-pointer lowercase"
+                  className="group inline-flex items-center gap-3 text-2xl sm:text-3.5xl font-normal tracking-tight text-zinc-900 hover:text-blue-700 transition-all duration-300 text-left cursor-pointer lowercase"
                 >
                   <span>{t.getInTouch}</span>
                   <ArrowRight
@@ -187,7 +187,7 @@ export const Footer: React.FC<FooterProps> = ({
         {/* Giant [jays] Logo with Interactive Letter Animation & Tracking Reveal */}
         <ScrollReveal delay={100} distance={-30}>
           <div className="py-8 group">
-            <div className="flex items-center justify-between text-[18vw] font-black tracking-tighter text-zinc-950 leading-none select-none hover:tracking-normal transition-all duration-700 cursor-default">
+            <div className="flex items-center justify-between text-[18vw] font-light tracking-tighter text-zinc-950 leading-none select-none hover:tracking-normal transition-all duration-700 cursor-default">
               {logoLetters.map((char, index) => (
                 <span
                   key={index}

@@ -231,13 +231,28 @@ export const ScrollReveal: React.FC<Props> = ({
       }
     };
 
+    // If already near the top of the document (above the fold), reveal right away so page transitions show full content
+    if (el.offsetTop < window.innerHeight * 0.95) {
+      delayTimer = window.setTimeout(() => {
+        runGsapSectionAnimation();
+      }, 20);
+      return () => {
+        if (delayTimer !== null) {
+          window.clearTimeout(delayTimer);
+        }
+        if (tl) {
+          tl.kill();
+        }
+      };
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           if (delayTimer === null) {
             delayTimer = window.setTimeout(() => {
               runGsapSectionAnimation();
-            }, 1000);
+            }, 60);
           }
           observer.unobserve(entry.target);
         }

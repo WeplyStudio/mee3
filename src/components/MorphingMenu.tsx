@@ -91,7 +91,7 @@ export const MorphingMenu: React.FC<Props> = ({
 
   return (
     <>
-      {/* Backdrop fading in/out behind with 2.5s fast-to-slow tween curve */}
+      {/* Backdrop fading in/out behind */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -100,8 +100,8 @@ export const MorphingMenu: React.FC<Props> = ({
             exit={{ opacity: 0 }}
             transition={{
               type: 'tween',
-              duration: 2.5,
-              ease: EXTREME_FAST_TO_SLOW,
+              duration: 0.35,
+              ease: [0.22, 1, 0.36, 1],
             }}
             className="fixed inset-0 bg-black/70 backdrop-blur-[4px] z-45 pointer-events-auto"
             onClick={() => {
@@ -113,23 +113,24 @@ export const MorphingMenu: React.FC<Props> = ({
       </AnimatePresence>
 
       {/* Anchor Container */}
-      <div className="relative w-[156px] sm:w-[170px] h-[38px] sm:h-[40px] pointer-events-auto z-50">
+      <div className="relative w-[170px] h-[40px] pointer-events-auto z-50">
         <motion.div
           ref={containerRef}
+          data-morphing-menu-box="true"
           initial={false}
           animate={
             isOpen
               ? {
-                  width: 'min(calc(100vw - 32px), 280px)',
-                  height: 'min(calc(100vh - 120px), 350px)',
+                  width: 280,
+                  height: 350,
                   borderRadius: 22,
                   backgroundColor: '#121213',
                   boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.95)',
                   borderColor: 'rgba(255, 255, 255, 0.12)',
                 }
               : {
-                  width: '100%',
-                  height: '100%',
+                  width: 170,
+                  height: 40,
                   borderRadius: 20,
                   backgroundColor: '#0d0d0e',
                   boxShadow: '0 4px 20px -4px rgba(0, 0, 0, 0.5)',
@@ -138,10 +139,10 @@ export const MorphingMenu: React.FC<Props> = ({
           }
           transition={{
             type: 'tween',
-            duration: 2.5,
-            ease: EXTREME_FAST_TO_SLOW,
+            duration: isOpen ? 0.55 : 0.34,
+            ease: [0.22, 1, 0.36, 1],
           }}
-          className="absolute top-0 left-1/2 -translate-x-1/2 overflow-hidden border flex flex-col justify-between select-none cursor-pointer"
+          className="absolute top-0 left-1/2 -translate-x-1/2 overflow-hidden border flex flex-col justify-between select-none cursor-pointer max-w-[calc(100vw-32px)]"
           style={{ transformOrigin: 'top center' }}
           onClick={() => {
             if (!isOpen) {
@@ -150,26 +151,15 @@ export const MorphingMenu: React.FC<Props> = ({
             }
           }}
         >
-          {/* Closed State Pill Content */}
-          <AnimatePresence>
-            {!isOpen && (
-              <motion.div
-                key="closed-pill-content"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{
-                  type: 'tween',
-                  duration: 0.5,
-                  ease: EXTREME_FAST_TO_SLOW,
-                }}
-                className="absolute inset-0 flex items-center justify-between px-5 text-xs sm:text-[13px] font-sans font-light tracking-tight text-white hover:text-zinc-200"
-              >
-                <span className="font-mono-code text-zinc-400 tracking-wider text-xs">[ ]</span>
-                <span className="font-normal lowercase tracking-tight text-xs sm:text-[13px]">{menuLabel}</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {/* Closed State Pill Content (Always mounted so it never pops or flickers during transitions) */}
+          <div
+            className={`absolute inset-x-0 top-0 h-[40px] flex items-center justify-between px-5 text-xs sm:text-[13px] font-sans font-light tracking-tight text-white hover:text-zinc-200 transition-opacity duration-200 ${
+              isOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            }`}
+          >
+            <span className="font-mono-code text-zinc-400 tracking-wider text-xs">[ ]</span>
+            <span className="font-normal lowercase tracking-tight text-xs sm:text-[13px]">{menuLabel}</span>
+          </div>
 
           {/* Open State Menu Content (Clean Minimalist Layout Matching Uploaded Image - No Icons) */}
           <AnimatePresence>
