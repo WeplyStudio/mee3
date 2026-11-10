@@ -12,6 +12,7 @@ interface Props {
   onToggleAudio: () => void;
   onOpenContact: () => void;
   onOpenStory: () => void;
+  onOpenBio?: () => void;
   onScrollTo: (id: string) => void;
   menuLabel: string;
 }
@@ -62,6 +63,7 @@ export const MorphingMenu: React.FC<Props> = ({
   onToggleAudio,
   onOpenContact,
   onOpenStory,
+  onOpenBio,
   onScrollTo,
   menuLabel,
 }) => {
@@ -272,7 +274,7 @@ export const MorphingMenu: React.FC<Props> = ({
                   </motion.div>
                 </nav>
 
-                {/* Bottom Row: [ jason ]                     instagram   github */}
+                {/* Bottom Row: [ jason ]                     bio   instagram   github */}
                 <motion.div variants={itemVariants} className="flex items-center justify-between text-xs pt-1">
                   <button
                     type="button"
@@ -294,6 +296,19 @@ export const MorphingMenu: React.FC<Props> = ({
                   </button>
 
                   <div className="flex items-center gap-3 text-zinc-400 font-normal text-xs">
+                    {onOpenBio && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNav(onOpenBio);
+                        }}
+                        onMouseEnter={() => uiSfx.playHover()}
+                        className="hover:text-white transition-colors lowercase cursor-pointer"
+                      >
+                        bio
+                      </button>
+                    )}
                     <a
                       href="https://instagram.com/jasonn.doc"
                       target="_blank"

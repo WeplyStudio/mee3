@@ -33,6 +33,7 @@ const AboutMePage = lazy(() => import('./components/AboutMePage').then(m => ({ d
 const ProjectsPage = lazy(() => import('./components/ProjectsPage').then(m => ({ default: m.ProjectsPage })));
 const ContactPage = lazy(() => import('./components/ContactPage').then(m => ({ default: m.ContactPage })));
 const ProjectDetailPage = lazy(() => import('./components/ProjectDetailPage').then(m => ({ default: m.ProjectDetailPage })));
+const BioPage = lazy(() => import('./components/BioPage').then(m => ({ default: m.BioPage })));
 const NotFoundPage = lazy(() => import('./components/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
 const ContactModal = lazy(() => import('./components/ContactModal').then(m => ({ default: m.ContactModal })));
 
@@ -42,7 +43,7 @@ import {
   fetchProjectsFromFirestore,
 } from './lib/firebase';
 
-type PageType = 'home' | 'aboutme' | 'projects' | 'contact' | 'project-detail' | '404';
+type PageType = 'home' | 'aboutme' | 'projects' | 'contact' | 'project-detail' | 'bio' | '404';
 
 interface NavigationTarget {
   page: PageType;
@@ -93,6 +94,10 @@ function parseLocationFromUrl(currentLang: Language = 'en'): { page: PageType; p
 
   if (route === '/contact' || route === '/get-in-touch') {
     return { page: 'contact', project: null, path: '/contact' };
+  }
+
+  if (route === '/bio' || route === '/links') {
+    return { page: 'bio', project: null, path: '/bio' };
   }
 
   if (route === '/404') {
@@ -209,6 +214,8 @@ export default function App() {
       title = 'selected works';
     } else if (page === 'contact') {
       title = 'get in touch';
+    } else if (page === 'bio') {
+      title = 'bio';
     } else if (page === 'home') {
       title = 'jason';
     } else if (page === '404') {
@@ -261,6 +268,7 @@ export default function App() {
             else if (pending.page === 'aboutme') path = '/aboutme';
             else if (pending.page === 'projects') path = '/projects';
             else if (pending.page === 'contact') path = '/contact';
+            else if (pending.page === 'bio') path = '/bio';
             else if (pending.page === 'admin') path = '/admin';
             else if (pending.page === '404') path = '/404';
             else if (pending.page === 'project-detail' && pending.project) path = `/project/${pending.project.id}`;
@@ -417,6 +425,8 @@ export default function App() {
       pageTitle = lang === 'id' ? 'Tentang Saya — Jason' : 'About Me & Story — Jason';
     } else if (currentPage === 'contact') {
       pageTitle = lang === 'id' ? 'Hubungi Saya — Jason' : 'Get in Touch — Jason';
+    } else if (currentPage === 'bio') {
+      pageTitle = 'Bio & Links — Jason';
     } else if (currentPage === '404') {
       pageTitle = '404 Not Found — Jason';
     }
@@ -535,6 +545,10 @@ export default function App() {
             }}
             onOpenStory={() => {
               navigateTo('aboutme');
+              setIsMenuOpen(false);
+            }}
+            onOpenBio={() => {
+              navigateTo('bio');
               setIsMenuOpen(false);
             }}
             onScrollTo={(id) => {
@@ -1104,6 +1118,19 @@ export default function App() {
       }}
       allProjects={currentProjects}
     />
+  ) : currentPage === 'bio' ? (
+    <BioPage
+      lang={lang}
+      onNavigateHome={() => {
+        navigateTo('home');
+      }}
+      onSelectProject={(project) => {
+        navigateTo('project-detail', undefined, { project });
+      }}
+      onOpenContact={() => {
+        navigateTo('contact');
+      }}
+    />
   ) : currentPage === '404' ? (
     <NotFoundPage
       lang={lang}
@@ -1134,6 +1161,9 @@ export default function App() {
           }}
           onNavigateAboutMe={() => {
             navigateTo('aboutme');
+          }}
+          onNavigateBio={() => {
+            navigateTo('bio');
           }}
           onOpenContact={() => {
             navigateTo('contact');

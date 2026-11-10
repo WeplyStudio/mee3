@@ -10,6 +10,7 @@ interface FooterProps {
   lang: Language;
   onNavigateHome: () => void;
   onNavigateAboutMe: () => void;
+  onNavigateBio?: () => void;
   onOpenContact: () => void;
   onScrollToProjects: () => void;
   onScrollToServices?: () => void;
@@ -21,6 +22,7 @@ export const Footer: React.FC<FooterProps> = ({
   lang,
   onNavigateHome,
   onNavigateAboutMe,
+  onNavigateBio,
   onOpenContact,
   onScrollToProjects,
   onScrollToServices,
@@ -119,6 +121,17 @@ export const Footer: React.FC<FooterProps> = ({
                     <span>{t.projects}</span>
                   </button>
                 </li>
+                {onNavigateBio && (
+                  <li>
+                    <button
+                      onClick={onNavigateBio}
+                      className="hover:text-black hover:translate-x-1 transition-all duration-200 cursor-pointer lowercase flex items-center gap-1.5"
+                    >
+                      <span className="w-1 h-1 rounded-full bg-zinc-300 group-hover:bg-zinc-800"></span>
+                      <span>bio</span>
+                    </button>
+                  </li>
+                )}
                 {onScrollToServices && (
                   <li>
                     <button
