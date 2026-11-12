@@ -150,130 +150,135 @@ export const Footer: React.FC<FooterProps> = ({
         }}
       >
         
-        {/* Top Grid Columns */}
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-8 pb-16">
+        {/* Top Geometric Grid Columns */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-10 pb-14 border-b border-zinc-100">
           
-          {/* Column 1: [contact] & get in touch */}
-          <div className="sm:col-span-6 space-y-3">
+          {/* Left Column: [contact] & get in touch (Flush Left) */}
+          <div className=" flex flex-col justify-between">
             <ScrollReveal delay={100} distance={-20}>
-              <div className="text-[11px] font-mono-code text-zinc-400 lowercase tracking-wider">
+              <div className="text-[11px] font-mono-code text-zinc-400 mb-3 lowercase tracking-wider leading-none">
                 {t.contactLabel}
               </div>
             </ScrollReveal>
             
             <ScrollReveal delay={180} distance={-25}>
-              <div className="space-y-1">
-                <button
-                  onClick={onOpenContact}
-                  className="group inline-flex items-center gap-3 text-2xl sm:text-3.5xl font-normal tracking-tight text-zinc-900 hover:text-blue-700 transition-all duration-300 text-left cursor-pointer lowercase"
-                >
-                  <span>{t.getInTouch}</span>
-                  <ArrowRight
-                    size={24}
-                    className="opacity-0 -translate-x-3 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 text-blue-700"
-                  />
-                </button>
-              </div>
+              <button
+                onClick={onOpenContact}
+                className="group inline-flex items-center gap-3 text-2xl sm:text-3xl font-normal tracking-tight text-zinc-900 hover:text-blue-700 transition-all duration-300 text-left cursor-pointer lowercase leading-none"
+              >
+                <span>{t.getInTouch}</span>
+                <ArrowRight
+                  size={22}
+                  className="opacity-0 -translate-x-3 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 text-blue-700"
+                />
+              </button>
             </ScrollReveal>
           </div>
 
-          {/* Column 2: [links] */}
-          <div className="sm:col-span-3 space-y-2 font-mono-code text-xs">
-            <ScrollReveal delay={120} distance={-20}>
-              <div className="text-[11px] text-zinc-400 mb-2 lowercase tracking-wider">
-                {t.linksLabel}
-              </div>
-            </ScrollReveal>
+          {/* Right Geometric Columns: [links] & [connect] (Flush Right) */}
+          <div className="grid grid-cols-2 sm:flex sm:items-start gap-10 sm:gap-16 lg:gap-24 font-mono-code text-xs">
             
-            <ScrollReveal delay={200} distance={-25}>
-              <ul className="space-y-1.5 text-zinc-600">
-                <li>
+            {/* [links] — 2x3 Geometric Matrix */}
+            <div>
+              <ScrollReveal delay={120} distance={-20}>
+                <div className="text-[11px] text-zinc-400 mb-3 lowercase tracking-wider leading-none">
+                  {t.linksLabel}
+                </div>
+              </ScrollReveal>
+              
+              <ScrollReveal delay={200} distance={-25}>
+                <div className="grid grid-cols-2 gap-x-10 sm:gap-x-12 gap-y-2 text-zinc-600">
                   <button
                     onClick={onNavigateHome}
-                    className="hover:text-black hover:translate-x-1 transition-all duration-200 cursor-pointer lowercase flex items-center gap-1.5"
+                    className="h-5 inline-flex items-center hover:text-zinc-950 transition-colors duration-200 cursor-pointer lowercase text-left"
                   >
-                    <span className="w-1 h-1 rounded-full bg-zinc-300 group-hover:bg-zinc-800"></span>
                     <span>{t.home}</span>
                   </button>
-                </li>
-                <li>
-                  <button
-                    onClick={onNavigateAboutMe}
-                    className="hover:text-black hover:translate-x-1 transition-all duration-200 cursor-pointer lowercase flex items-center gap-1.5"
-                  >
-                    <span className="w-1 h-1 rounded-full bg-zinc-300 group-hover:bg-zinc-800"></span>
-                    <span>{t.aboutme}</span>
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={onScrollToProjects}
-                    className="hover:text-black hover:translate-x-1 transition-all duration-200 cursor-pointer lowercase flex items-center gap-1.5"
-                  >
-                    <span className="w-1 h-1 rounded-full bg-zinc-300 group-hover:bg-zinc-800"></span>
-                    <span>{t.projects}</span>
-                  </button>
-                </li>
-                {onNavigateBio && (
-                  <li>
+                  {onNavigateBio && (
                     <button
                       onClick={onNavigateBio}
-                      className="hover:text-black hover:translate-x-1 transition-all duration-200 cursor-pointer lowercase flex items-center gap-1.5"
+                      className="h-5 inline-flex items-center hover:text-zinc-950 transition-colors duration-200 cursor-pointer lowercase text-left"
                     >
-                      <span className="w-1 h-1 rounded-full bg-zinc-300 group-hover:bg-zinc-800"></span>
                       <span>bio</span>
                     </button>
-                  </li>
-                )}
-                {onScrollToServices && (
-                  <li>
+                  )}
+                  <button
+                    onClick={onNavigateAboutMe}
+                    className="h-5 inline-flex items-center hover:text-zinc-950 transition-colors duration-200 cursor-pointer lowercase text-left"
+                  >
+                    <span>{t.aboutme}</span>
+                  </button>
+                  {onScrollToServices && (
                     <button
                       onClick={onScrollToServices}
-                      className="hover:text-black hover:translate-x-1 transition-all duration-200 cursor-pointer lowercase flex items-center gap-1.5"
+                      className="h-5 inline-flex items-center hover:text-zinc-950 transition-colors duration-200 cursor-pointer lowercase text-left"
                     >
-                      <span className="w-1 h-1 rounded-full bg-zinc-300 group-hover:bg-zinc-800"></span>
                       <span>{t.services}</span>
                     </button>
-                  </li>
-                )}
-                {onScrollToFaq && (
-                  <li>
+                  )}
+                  <button
+                    onClick={onScrollToProjects}
+                    className="h-5 inline-flex items-center hover:text-zinc-950 transition-colors duration-200 cursor-pointer lowercase text-left"
+                  >
+                    <span>{t.projects}</span>
+                  </button>
+                  {onScrollToFaq && (
                     <button
                       onClick={onScrollToFaq}
-                      className="hover:text-black hover:translate-x-1 transition-all duration-200 cursor-pointer lowercase flex items-center gap-1.5"
+                      className="h-5 inline-flex items-center hover:text-zinc-950 transition-colors duration-200 cursor-pointer lowercase text-left"
                     >
-                      <span className="w-1 h-1 rounded-full bg-zinc-300 group-hover:bg-zinc-800"></span>
                       <span>{t.faq}</span>
                     </button>
-                  </li>
-                )}
-              </ul>
-            </ScrollReveal>
-          </div>
+                  )}
+                </div>
+              </ScrollReveal>
+            </div>
 
-          {/* Column 3: [connect] */}
-          <div className="sm:col-span-3 space-y-2 font-mono-code text-xs">
-            <ScrollReveal delay={140} distance={-20}>
-              <div className="text-[11px] text-zinc-400 mb-2 lowercase tracking-wider">
-                {t.connectLabel}
-              </div>
-            </ScrollReveal>
-            
-            <ScrollReveal delay={220} distance={-25}>
-              <ul className="space-y-1.5 text-zinc-600">
-                <li>
-                  <a
-                    href="https://instagram.com/jasonn.doc"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="group hover:text-black transition-colors flex items-center gap-1.5 lowercase"
-                  >
-                    <span>{t.instagram}</span>
-                    <AnimatedArrowUpRight size={12} className="text-zinc-400 group-hover:text-black transition-colors" />
-                  </a>
-                </li>
-              </ul>
-            </ScrollReveal>
+            {/* [connect] — 1x3 Geometric Stack matching [links] height */}
+            <div>
+              <ScrollReveal delay={140} distance={-20}>
+                <div className="text-[11px] text-zinc-400 mb-3 lowercase tracking-wider leading-none">
+                  {t.connectLabel}
+                </div>
+              </ScrollReveal>
+              
+              <ScrollReveal delay={220} distance={-25}>
+                <ul className="grid grid-cols-1 gap-y-2 text-zinc-600">
+                  <li>
+                    <a
+                      href="https://instagram.com/jasonn.doc"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="group h-5 inline-flex items-center justify-between gap-2 hover:text-zinc-950 transition-colors lowercase"
+                    >
+                      <span>{t.instagram}</span>
+                      <AnimatedArrowUpRight size={11} className="text-zinc-400 group-hover:text-zinc-950 transition-colors" />
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="https://wa.me/6288808943176"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="group h-5 inline-flex items-center justify-between gap-2 hover:text-zinc-950 transition-colors lowercase"
+                    >
+                      <span>whatsapp</span>
+                      <AnimatedArrowUpRight size={11} className="text-zinc-400 group-hover:text-zinc-950 transition-colors" />
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="mailto:hello@jayss.id"
+                      className="group h-5 inline-flex items-center justify-between gap-2 hover:text-zinc-950 transition-colors lowercase"
+                    >
+                      <span>email</span>
+                      <AnimatedArrowUpRight size={11} className="text-zinc-400 group-hover:text-zinc-950 transition-colors" />
+                    </a>
+                  </li>
+                </ul>
+              </ScrollReveal>
+            </div>
+
           </div>
         </div>
 
