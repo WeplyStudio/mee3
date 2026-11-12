@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useLayoutEffect, useCallback } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { ScrollReveal } from './ScrollReveal';
 import { AnimatedArrowUpRight } from './AnimatedIcons';
@@ -30,8 +30,101 @@ export const Footer: React.FC<FooterProps> = ({
 }) => {
   const t = TRANSLATIONS[lang];
   const [hoveredLetter, setHoveredLetter] = useState<number | null>(null);
+  const [copiedEmail, setCopiedEmail] = useState<boolean>(false);
+  const bannerContainerRef = useRef<HTMLButtonElement | null>(null);
+  const bannerTextRef = useRef<HTMLSpanElement | null>(null);
+  const lastMeasuredWidthRef = useRef<number>(0);
 
-  const logoLetters = ['[', 'j', 'a', 'y', 's', ']'];
+  const emailText = 'hello@jayss.id';
+  const logoLetters = Array.from(emailText);
+
+  const fitBannerText = useCallback((force = false) => {
+    const container = bannerContainerRef.current;
+    const textEl = bannerTextRef.current;
+    if (!container || !textEl) return;
+
+    const availableWidth = container.clientWidth;
+    if (availableWidth <= 0) return;
+    if (!force && Math.abs(availableWidth - lastMeasuredWidthRef.current) < 0.5) return;
+
+    lastMeasuredWidthRef.current = availableWidth;
+
+    const prevFontSize = textEl.style.fontSize;
+    textEl.style.fontSize = '200px';
+    const measuredWidth = textEl.offsetWidth;
+    if (measuredWidth > 0) {
+      const fittedSize = (availableWidth / measuredWidth) * 200;
+      textEl.style.fontSize = `${fittedSize}px`;
+    } else {
+      textEl.style.fontSize = prevFontSize;
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    fitBannerText(true);
+
+    if (typeof document !== 'undefined' && 'fonts' in document) {
+      document.fonts.ready.then(() => {
+        fitBannerText(true);
+      });
+    }
+
+    const container = bannerContainerRef.current;
+    let rafId: number | null = null;
+
+    const handleResize = () => {
+      if (rafId !== null) {
+        window.cancelAnimationFrame(rafId);
+      }
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        fitBannerText(false);
+      });
+    };
+
+    if (!container || typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', handleResize);
+      return () => {
+        if (rafId !== null) window.cancelAnimationFrame(rafId);
+        window.removeEventListener('resize', handleResize);
+      };
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      const newWidth = entry?.contentRect?.width ?? container.clientWidth;
+      if (Math.abs(newWidth - lastMeasuredWidthRef.current) < 0.5) return;
+      handleResize();
+    });
+    observer.observe(container);
+
+    return () => {
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+      observer.disconnect();
+    };
+  }, [fitBannerText]);
+
+  const handleCopyEmail = async () => {
+    try {
+      await navigator.clipboard.writeText(emailText);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = emailText;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+      } catch {}
+      document.body.removeChild(textarea);
+    }
+    setCopiedEmail(true);
+    window.setTimeout(() => {
+      setCopiedEmail(false);
+    }, 2000);
+  };
+
   const safeProgress = typeof footerProgress === 'number' && !Number.isNaN(footerProgress) ? footerProgress : 0;
 
   // Dynamic downward reveal animation:
@@ -184,26 +277,47 @@ export const Footer: React.FC<FooterProps> = ({
           </div>
         </div>
 
-        {/* Giant [jays] Logo with Interactive Letter Animation & Tracking Reveal */}
+        {/* Giant hello@jayss.id Click-to-Copy Interactive Banner */}
         <ScrollReveal delay={100} distance={-30}>
-          <div className="py-8 group">
-            <div className="flex items-center justify-between text-[18vw] font-light tracking-tighter text-zinc-950 leading-none select-none hover:tracking-normal transition-all duration-700 cursor-default">
-              {logoLetters.map((char, index) => (
-                <span
-                  key={index}
-                  onMouseEnter={() => setHoveredLetter(index)}
-                  onMouseLeave={() => setHoveredLetter(null)}
-                  className={`inline-block transition-transform duration-300 ${
-                    hoveredLetter === index
-                      ? '-translate-y-3 scale-105 text-blue-700'
-                      : hoveredLetter !== null && Math.abs(hoveredLetter - index) === 1
-                      ? '-translate-y-1.5 text-zinc-800'
-                      : ''
-                  }`}
-                >
-                  {char}
-                </span>
-              ))}
+          <div className="py-8 group relative">
+            <button
+              ref={bannerContainerRef}
+              type="button"
+              onClick={handleCopyEmail}
+              title="Click to copy hello@jayss.id"
+              className="w-full block text-left font-geist tracking-[-0.04em] text-zinc-950 leading-none whitespace-nowrap select-none transition-colors duration-500 cursor-pointer"
+            >
+              <span
+                ref={bannerTextRef}
+                className="inline-block whitespace-nowrap leading-none"
+                style={{ fontSize: '14vw' }}
+              >
+                {logoLetters.map((char, index) => (
+                  <span
+                    key={index}
+                    onMouseEnter={() => setHoveredLetter(index)}
+                    onMouseLeave={() => setHoveredLetter(null)}
+                    className={`inline-block transition-transform duration-300 ${
+                      copiedEmail
+                        ? 'text-blue-700 -translate-y-1'
+                        : hoveredLetter === index
+                        ? '-translate-y-3 scale-105 text-blue-700'
+                        : hoveredLetter !== null && Math.abs(hoveredLetter - index) === 1
+                        ? '-translate-y-1.5 text-zinc-800'
+                        : ''
+                    }`}
+                  >
+                    {char}
+                  </span>
+                ))}
+              </span>
+            </button>
+            <div
+              className={`mt-3 text-center text-xs font-mono-code lowercase tracking-wider transition-all duration-300 ${
+                copiedEmail ? 'text-blue-700 opacity-100 translate-y-0' : 'text-zinc-400 opacity-0 -translate-y-1 pointer-events-none'
+              }`}
+            >
+              [copied hello@jayss.id]
             </div>
           </div>
         </ScrollReveal>
