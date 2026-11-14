@@ -117,8 +117,67 @@ export interface ProductVariantOption {
   label: string;
   durationLabel: string;
   price: number;
+  originalPrice?: number;
   deliveryType?: ProductDeliveryType;
+  iconUrl?: string;
+  benefitsText?: string;
 }
+
+export interface ProductBenefitItem {
+  title: string;
+  desc: string;
+}
+
+export interface TheSvgIconEntry {
+  slug: string;
+  title: string;
+  categories: string[];
+  defaultPath: string;
+  variants?: Record<string, string>;
+}
+
+export const THESVG_POPULAR_ICONS: TheSvgIconEntry[] = [
+  { slug: 'netflix', title: 'Netflix', categories: ['Streaming'], defaultPath: '/icons/netflix/default.svg' },
+  { slug: 'spotify', title: 'Spotify', categories: ['Music'], defaultPath: '/icons/spotify/default.svg' },
+  { slug: 'youtube', title: 'YouTube Premium', categories: ['Streaming'], defaultPath: '/icons/youtube/default.svg' },
+  { slug: 'google-gemini', title: 'Google Gemini', categories: ['AI'], defaultPath: '/icons/google-gemini/default.svg' },
+  { slug: 'openai-chatgpt', title: 'ChatGPT (OpenAI)', categories: ['AI'], defaultPath: '/icons/openai-chatgpt/mono.svg' },
+  { slug: 'claude-ai', title: 'Claude AI', categories: ['AI'], defaultPath: '/icons/claude-ai/default.svg' },
+  { slug: 'perplexity-ai', title: 'Perplexity AI', categories: ['AI'], defaultPath: '/icons/perplexity-ai/default.svg' },
+  { slug: 'canva', title: 'Canva Pro', categories: ['Design'], defaultPath: '/icons/canva/default.svg' },
+  { slug: 'capcut', title: 'CapCut Pro', categories: ['Video'], defaultPath: '/icons/capcut/mono.svg' },
+  { slug: 'disney-plus', title: 'Disney+', categories: ['Streaming'], defaultPath: '/icons/disney-plus/default.svg' },
+  { slug: 'prime-video', title: 'Prime Video', categories: ['Streaming'], defaultPath: '/icons/prime-video/default.svg' },
+  { slug: 'crunchyroll', title: 'Crunchyroll', categories: ['Streaming'], defaultPath: '/icons/crunchyroll/default.svg' },
+  { slug: 'apple-music', title: 'Apple Music', categories: ['Music'], defaultPath: '/icons/apple-music/default.svg' },
+  { slug: 'tidal', title: 'TIDAL', categories: ['Music'], defaultPath: '/icons/tidal/default.svg' },
+  { slug: 'soundcloud', title: 'SoundCloud', categories: ['Music'], defaultPath: '/icons/soundcloud/default.svg' },
+  { slug: 'deezer', title: 'Deezer', categories: ['Music'], defaultPath: '/icons/deezer/default.svg' },
+  { slug: 'whatsapp', title: 'WhatsApp', categories: ['Social'], defaultPath: '/icons/whatsapp/default.svg' },
+  { slug: 'telegram', title: 'Telegram Premium', categories: ['Social'], defaultPath: '/icons/telegram/default.svg' },
+  { slug: 'discord', title: 'Discord Nitro', categories: ['Social'], defaultPath: '/icons/discord/default.svg' },
+  { slug: 'adobe-creative-cloud', title: 'Adobe Creative Cloud', categories: ['Design'], defaultPath: '/icons/adobe-creative-cloud/default.svg' },
+  { slug: 'figma', title: 'Figma', categories: ['Design'], defaultPath: '/icons/figma/default.svg' },
+  { slug: 'notion', title: 'Notion Plus', categories: ['Productivity'], defaultPath: '/icons/notion/default.svg' },
+  { slug: 'grammarly', title: 'Grammarly', categories: ['Productivity'], defaultPath: '/icons/grammarly/default.svg' },
+  { slug: 'zoom', title: 'Zoom Pro', categories: ['Productivity'], defaultPath: '/icons/zoom/default.svg' },
+  { slug: 'duolingo', title: 'Super Duolingo', categories: ['Education'], defaultPath: '/icons/duolingo/default.svg' },
+  { slug: 'nordvpn', title: 'NordVPN', categories: ['VPN'], defaultPath: '/icons/nordvpn/default.svg' },
+  { slug: 'expressvpn', title: 'ExpressVPN', categories: ['VPN'], defaultPath: '/icons/expressvpn/default.svg' },
+  { slug: 'surfshark', title: 'Surfshark VPN', categories: ['VPN'], defaultPath: '/icons/surfshark/default.svg' },
+  { slug: 'steam', title: 'Steam Wallet', categories: ['Gaming'], defaultPath: '/icons/steam/default.svg' },
+  { slug: 'playstation', title: 'PlayStation Plus', categories: ['Gaming'], defaultPath: '/icons/playstation/default.svg' },
+  { slug: 'xbox', title: 'Xbox Game Pass', categories: ['Gaming'], defaultPath: '/icons/xbox/default.svg' },
+  { slug: 'roblox', title: 'Roblox / Robux', categories: ['Gaming'], defaultPath: '/icons/roblox/default.svg' },
+  { slug: 'valorant', title: 'Valorant Points', categories: ['Gaming'], defaultPath: '/icons/valorant/default.svg' },
+  { slug: 'midjourney', title: 'Midjourney', categories: ['AI'], defaultPath: '/icons/midjourney/default.svg' },
+  { slug: 'cursor', title: 'Cursor AI', categories: ['AI'], defaultPath: '/icons/cursor/default.svg' },
+  { slug: 'github', title: 'GitHub Copilot', categories: ['Developer'], defaultPath: '/icons/github/default.svg' },
+  { slug: 'apple', title: 'Apple One / iCloud+', categories: ['Cloud'], defaultPath: '/icons/apple/default.svg' },
+  { slug: 'google-drive', title: 'Google One / Drive', categories: ['Cloud'], defaultPath: '/icons/google-drive/default.svg' },
+  { slug: 'dropbox', title: 'Dropbox Plus', categories: ['Cloud'], defaultPath: '/icons/dropbox/default.svg' },
+  { slug: 'twitch', title: 'Twitch Turbo', categories: ['Streaming'], defaultPath: '/icons/twitch/default.svg' },
+];
 
 export interface StructuredStockRowInput {
   accountEmail: string;
@@ -433,6 +492,8 @@ export interface StoreProductRecord {
   ratingAvg: number;
   ratingCount: number;
   badge: string;
+  iconUrl?: string;
+  benefitsText?: string;
   createdAt?: Timestamp | null;
   updatedAt?: Timestamp | null;
 }
@@ -528,19 +589,220 @@ export interface StoreRestockAlertRecord {
   updatedAt?: Timestamp | null;
 }
 
+export interface StorePromoRecord {
+  id: string;
+  code: string;
+  title: string;
+  description: string;
+  discountType: 'percent' | 'fixed';
+  discountValue: number;
+  minPurchase: number;
+  isActive: boolean;
+  createdAt?: Timestamp | null;
+  updatedAt?: Timestamp | null;
+}
+
+export function getVariantDiscountInfo(
+  price: number,
+  originalPrice?: number
+): {
+  hasDiscount: boolean;
+  originalPrice: number;
+  finalPrice: number;
+  savingsAmount: number;
+  discountPercent: number;
+} {
+  const finalPrice = Math.max(0, Math.round(Number(price) || 0));
+  const orig = Math.max(0, Math.round(Number(originalPrice) || 0));
+  if (orig > finalPrice && orig > 0) {
+    const savingsAmount = orig - finalPrice;
+    const discountPercent = Math.min(99, Math.max(1, Math.round((savingsAmount / orig) * 100)));
+    return {
+      hasDiscount: true,
+      originalPrice: orig,
+      finalPrice,
+      savingsAmount,
+      discountPercent,
+    };
+  }
+  return {
+    hasDiscount: false,
+    originalPrice: finalPrice,
+    finalPrice,
+    savingsAmount: 0,
+    discountPercent: 0,
+  };
+}
+
+export function normalizeTheSvgIconUrl(rawUrl?: string): string {
+  const val = String(rawUrl || '').trim();
+  if (!val) return '';
+  if (val.startsWith('https://thesvg.org/') || val.startsWith('https://cdn.jsdelivr.net/')) {
+    return val;
+  }
+  if (val.startsWith('/icons/')) {
+    return `https://thesvg.org${val}`;
+  }
+  if (/^[a-z0-9\-]+$/i.test(val)) {
+    const matched = THESVG_POPULAR_ICONS.find((item) => item.slug === val.toLowerCase());
+    if (matched) return `https://thesvg.org${matched.defaultPath}`;
+    return `https://thesvg.org/icons/${val.toLowerCase()}/default.svg`;
+  }
+  return val;
+}
+
+export function inferTheSvgIconFromTitle(title: string): string {
+  const lower = String(title || '').toLowerCase();
+  if (!lower) return '';
+  for (const item of THESVG_POPULAR_ICONS) {
+    const slugTokens = item.slug.split('-').filter((t) => t.length >= 3);
+    const titleLower = item.title.toLowerCase();
+    if (
+      lower.includes(item.slug) ||
+      lower.includes(titleLower) ||
+      (slugTokens.length > 0 && lower.includes(slugTokens[0]))
+    ) {
+      return `https://thesvg.org${item.defaultPath}`;
+    }
+  }
+  return '';
+}
+
+export function getDefaultProductTemplate(
+  productName: string = '',
+  deliveryType: ProductDeliveryType = 'account'
+): {
+  category: string;
+  badge: string;
+  description: string;
+  benefitsText: string;
+  usageGuide: string;
+} {
+  const cleanName = productName.trim() || 'Produk Digital';
+  return {
+    category: 'Premium Apps',
+    badge: 'Best Seller',
+    description:
+      `Layanan ${cleanName} resmi & bergaransi penuh selama masa aktif. Proses pengiriman otomatis dan instan langsung tampil setelah pembayaran terverifikasi.\n\n` +
+      `Ketentuan Layanan:\n` +
+      `- Produk resmi, stabil, dan siap langsung digunakan\n` +
+      `- Perlindungan garansi penuh selama 3 hari sejak pembelian\n` +
+      `- Wajib mengikuti panduan penggunaan agar garansi tetap aktif`,
+    benefitsText:
+      `Akses Fitur Premium Penuh | Nikmati seluruh fitur eksklusif ${cleanName} tanpa batas sesuai variasi paket yang dipilih.\n` +
+      `Pengiriman Otomatis Instan | ${
+        deliveryType === 'redeem'
+          ? 'Kode redeem langsung dikirim otomatis di halaman receipt begitu pembayaran berhasil.'
+          : 'Kredensial akun (Email & Password) langsung tampil otomatis di halaman receipt setelah pembayaran berhasil.'
+      }\n` +
+      `Panduan Penggunaan Lengkap | Dilengkapi langkah-langkah aktivasi dan penggunaan agar mudah dipakai oleh siapa saja.\n` +
+      `Jaminan Garansi Penuh 3 Hari | Jaminan penggantian produk baru atau pengembalian dana penuh jika terdapat kendala.`,
+    usageGuide:
+      deliveryType === 'redeem'
+        ? `1. Salin kode redeem ${cleanName} yang tampil di halaman receipt.\n2. Buka halaman atau menu Redeem pada aplikasi/website resmi.\n3. Tempelkan kode redeem dan konfirmasi hingga paket aktif.`
+        : `1. Buka aplikasi atau website resmi ${cleanName}.\n2. Masuk menggunakan Email dan Password akun yang tampil di halaman receipt.\n3. Gunakan sesuai ketentuan variasi dan jangan mengubah pengaturan keamanan akun agar garansi tetap berlaku.`,
+  };
+}
+
+export function parseBenefitsText(
+  rawText: string,
+  productTitle: string = 'Produk Digital',
+  deliveryType: ProductDeliveryType = 'account',
+  fallbackDescription: string = ''
+): ProductBenefitItem[] {
+  const lines = String(rawText || '')
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^[-•*]\s*/, '').trim())
+    .filter(Boolean);
+
+  if (lines.length > 0) {
+    return lines.map((line) => {
+      const pipeIdx = line.indexOf('|');
+      if (pipeIdx !== -1) {
+        const title = line.slice(0, pipeIdx).trim();
+        const desc = line.slice(pipeIdx + 1).trim();
+        return {
+          title: title || 'Keunggulan Produk',
+          desc,
+        };
+      }
+      const colonIdx = line.indexOf(':');
+      if (colonIdx > 2 && colonIdx < 60) {
+        return {
+          title: line.slice(0, colonIdx).trim(),
+          desc: line.slice(colonIdx + 1).trim(),
+        };
+      }
+      return {
+        title: line,
+        desc: '',
+      };
+    });
+  }
+
+  const firstDescLine =
+    fallbackDescription
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean)[0] || '';
+
+  return [
+    {
+      title: `Akses Resmi ${productTitle}`,
+      desc:
+        firstDescLine ||
+        `Nikmati layanan penuh ${productTitle} dengan pengiriman otomatis instan.`,
+    },
+    {
+      title:
+        deliveryType === 'redeem'
+          ? 'Pengiriman Instan Kode Redeem / Voucher'
+          : 'Pengiriman Instan Akun (Email & Password)',
+      desc:
+        deliveryType === 'redeem'
+          ? 'Kode redeem langsung tampil otomatis di halaman receipt begitu pembayaran terverifikasi.'
+          : 'Informasi kredensial email & password akun langsung tampil otomatis di halaman receipt setelah pembayaran berhasil.',
+    },
+    {
+      title: 'Panduan Penggunaan Lengkap',
+      desc: 'Dilengkapi instruksi cara penggunaan khusus produk di halaman receipt setelah transaksi selesai.',
+    },
+    {
+      title: 'Jaminan Garansi Penuh 3 Hari',
+      desc: 'Garansi penggantian produk baru atau pengembalian dana penuh jika terdapat kendala sesuai syarat garansi.',
+    },
+  ];
+}
+
 export function serializeVariants(
   variants: ProductVariantOption[],
-  deliveryType: ProductDeliveryType = 'account'
+  deliveryType: ProductDeliveryType = 'account',
+  iconUrl: string = '',
+  benefitsText: string = ''
 ): string {
+  const cleanIcon = clampString(normalizeTheSvgIconUrl(iconUrl), 240, '');
+  const cleanBenefits = clampString(benefitsText, 2400, '');
   const sanitized: ProductVariantOption[] = (variants || [])
     .filter((v) => v && v.label && v.label.trim().length > 0)
-    .map((v, idx) => ({
-      id: sanitizeId(v.id || `var_${idx + 1}`),
-      label: clampString(v.label, 80, `Variasi ${idx + 1}`),
-      durationLabel: clampString(v.durationLabel, 60, '30 Hari'),
-      price: Math.max(0, Math.min(1000000000, Math.round(Number(v.price) || 0))),
-      deliveryType: v.deliveryType || deliveryType,
-    }));
+    .slice(0, 20)
+    .map((v, idx) => {
+      const cleanPrice = Math.max(0, Math.min(1000000000, Math.round(Number(v.price) || 0)));
+      const cleanOrig = Math.max(0, Math.min(1000000000, Math.round(Number(v.originalPrice) || 0)));
+      return {
+        id: sanitizeId(v.id || `var_${idx + 1}`),
+        label: clampString(v.label, 80, `Variasi ${idx + 1}`),
+        durationLabel: clampString(v.durationLabel, 60, '30 Hari'),
+        price: cleanPrice,
+        ...(cleanOrig > cleanPrice ? { originalPrice: cleanOrig } : {}),
+        deliveryType: v.deliveryType || deliveryType,
+        ...(idx === 0 && (cleanIcon || v.iconUrl)
+          ? { iconUrl: cleanIcon || normalizeTheSvgIconUrl(v.iconUrl) }
+          : {}),
+        ...(idx === 0 && (cleanBenefits || v.benefitsText)
+          ? { benefitsText: cleanBenefits || clampString(v.benefitsText || '', 2400, '') }
+          : {}),
+      };
+    });
 
   if (sanitized.length === 0) {
     sanitized.push({
@@ -549,10 +811,20 @@ export function serializeVariants(
       durationLabel: '30 Hari',
       price: 0,
       deliveryType,
+      ...(cleanIcon ? { iconUrl: cleanIcon } : {}),
+      ...(cleanBenefits ? { benefitsText: cleanBenefits } : {}),
     });
   }
 
-  return JSON.stringify(sanitized).slice(0, 4000);
+  let json = JSON.stringify(sanitized);
+  if (json.length > 7800 && sanitized[0]?.benefitsText) {
+    sanitized[0] = {
+      ...sanitized[0],
+      benefitsText: sanitized[0].benefitsText.slice(0, 1000),
+    };
+    json = JSON.stringify(sanitized);
+  }
+  return json;
 }
 
 export function getVariantsForProduct(product: {
@@ -565,17 +837,24 @@ export function getVariantsForProduct(product: {
     try {
       const parsed = JSON.parse(product.variantsJson);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map((v: any, idx: number) => ({
-          id: sanitizeId(String(v.id || `var_${idx + 1}`)),
-          label: clampString(String(v.label || `Variasi ${idx + 1}`), 80, `Variasi ${idx + 1}`),
-          durationLabel: clampString(
-            String(v.durationLabel || product.durationLabel || '30 Hari'),
-            60,
-            '30 Hari'
-          ),
-          price: Math.max(0, Math.round(Number(v.price ?? product.price) || 0)),
-          deliveryType: v.deliveryType === 'redeem' ? 'redeem' : 'account',
-        }));
+        return parsed.map((v: any, idx: number) => {
+          const cleanPrice = Math.max(0, Math.round(Number(v.price ?? product.price) || 0));
+          const cleanOrig = Math.max(0, Math.round(Number(v.originalPrice || 0)));
+          return {
+            id: sanitizeId(String(v.id || `var_${idx + 1}`)),
+            label: clampString(String(v.label || `Variasi ${idx + 1}`), 80, `Variasi ${idx + 1}`),
+            durationLabel: clampString(
+              String(v.durationLabel || product.durationLabel || '30 Hari'),
+              60,
+              '30 Hari'
+            ),
+            price: cleanPrice,
+            ...(cleanOrig > cleanPrice ? { originalPrice: cleanOrig } : {}),
+            deliveryType: v.deliveryType === 'redeem' ? 'redeem' : 'account',
+            iconUrl: v.iconUrl ? normalizeTheSvgIconUrl(String(v.iconUrl)) : undefined,
+            benefitsText: v.benefitsText ? String(v.benefitsText) : undefined,
+          };
+        });
       }
     } catch {
       // Fallback below
@@ -590,6 +869,56 @@ export function getVariantsForProduct(product: {
       deliveryType: 'account',
     },
   ];
+}
+
+export function getProductBenefitsText(product: {
+  id: string;
+  benefitsText?: string;
+  variantsJson?: string;
+  durationLabel: string;
+  price: number;
+}): string {
+  if (product.benefitsText) return product.benefitsText;
+  const vars = getVariantsForProduct(product);
+  return vars.find((v) => v.benefitsText)?.benefitsText || '';
+}
+
+export function getProductBenefits(product: {
+  id: string;
+  title?: string;
+  description?: string;
+  benefitsText?: string;
+  variantsJson?: string;
+  durationLabel: string;
+  price: number;
+}): ProductBenefitItem[] {
+  const rawBenefits = getProductBenefitsText(product);
+  const delivType = getProductDeliveryType(product);
+  return parseBenefitsText(
+    rawBenefits,
+    product.title || 'Produk Digital',
+    delivType,
+    product.description || ''
+  );
+}
+
+export function getProductIconUrl(product: {
+  id: string;
+  title?: string;
+  iconUrl?: string;
+  variantsJson?: string;
+  durationLabel: string;
+  price: number;
+}): string {
+  if (product.iconUrl) {
+    return normalizeTheSvgIconUrl(product.iconUrl);
+  }
+  const vars = getVariantsForProduct(product);
+  const varIcon = vars.find((v) => v.iconUrl)?.iconUrl;
+  if (varIcon) {
+    return normalizeTheSvgIconUrl(varIcon);
+  }
+  return inferTheSvgIconFromTitle(product.title || '');
 }
 
 export function getProductDeliveryType(product: {
@@ -660,7 +989,7 @@ export function subscribeStoreProducts(
       const items: StoreProductRecord[] = snapshot.docs
         .map((d) => {
           const raw = d.data() as any;
-          return {
+          const baseRecord = {
             id: d.id,
             title: String(raw.title || ''),
             category: String(raw.category || 'Premium'),
@@ -675,6 +1004,11 @@ export function subscribeStoreProducts(
             badge: String(raw.badge || ''),
             createdAt: raw.createdAt || null,
             updatedAt: raw.updatedAt || null,
+          };
+          return {
+            ...baseRecord,
+            iconUrl: getProductIconUrl(baseRecord),
+            benefitsText: getProductBenefitsText(baseRecord),
           };
         })
         .filter((item) => !LEGACY_FAKE_PRODUCT_IDS.includes(item.id));
@@ -941,16 +1275,18 @@ export async function purgeLegacyFakeStoreData(): Promise<number> {
   return deletedCount;
 }
 
-// Admin: Create Product with Variations, Delivery Type & Usage Guide
+// Admin: Create Product with Variations, Delivery Type, Icon, Benefits & Usage Guide
 export async function createStoreProduct(input: {
   id?: string;
   title: string;
   category: string;
   description: string;
+  benefitsText?: string;
   usageGuide: string;
   deliveryType: ProductDeliveryType;
   variants: ProductVariantOption[];
   badge: string;
+  iconUrl?: string;
   stockCount?: number;
   ratingAvg?: number;
   ratingCount?: number;
@@ -959,7 +1295,13 @@ export async function createStoreProduct(input: {
     input.id || `prod_${input.title.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_${Date.now().toString(36)}`
   );
   const path = `storeProducts/${productId}`;
-  const variantsJson = serializeVariants(input.variants, input.deliveryType);
+  const resolvedIcon = input.iconUrl || inferTheSvgIconFromTitle(input.title);
+  const variantsJson = serializeVariants(
+    input.variants,
+    input.deliveryType,
+    resolvedIcon,
+    input.benefitsText || ''
+  );
   const parsedVariants: ProductVariantOption[] = JSON.parse(variantsJson);
   const lowestVariant = parsedVariants.reduce(
     (min, v) => (v.price < min.price ? v : min),
@@ -969,7 +1311,7 @@ export async function createStoreProduct(input: {
   const payload = {
     title: clampString(input.title, 120, 'Produk Digital'),
     category: clampString(input.category, 60, 'Premium'),
-    description: clampString(input.description, 600, 'Produk digital resmi bergaransi.'),
+    description: clampString(input.description, 2000, 'Produk digital resmi bergaransi.'),
     usageGuide: clampString(
       input.usageGuide,
       2500,
@@ -995,6 +1337,8 @@ export async function createStoreProduct(input: {
     return {
       id: productId,
       ...payload,
+      iconUrl: normalizeTheSvgIconUrl(resolvedIcon),
+      benefitsText: input.benefitsText || '',
       createdAt: null,
       updatedAt: null,
     };
@@ -1003,23 +1347,31 @@ export async function createStoreProduct(input: {
   }
 }
 
-// Admin: Edit / Update Existing Product, Variations, Delivery Type & Usage Guide
+// Admin: Edit / Update Existing Product, Variations, Delivery Type, Icon, Benefits & Usage Guide
 export async function updateStoreProduct(
   productId: string,
   input: {
     title: string;
     category: string;
     description: string;
+    benefitsText?: string;
     usageGuide: string;
     deliveryType: ProductDeliveryType;
     variants: ProductVariantOption[];
     badge: string;
+    iconUrl?: string;
   }
 ): Promise<StoreProductRecord> {
   const cleanId = sanitizeId(productId);
   const path = `storeProducts/${cleanId}`;
   const prodRef = doc(db, 'storeProducts', cleanId);
-  const variantsJson = serializeVariants(input.variants, input.deliveryType);
+  const resolvedIcon = input.iconUrl || inferTheSvgIconFromTitle(input.title);
+  const variantsJson = serializeVariants(
+    input.variants,
+    input.deliveryType,
+    resolvedIcon,
+    input.benefitsText || ''
+  );
   const parsedVariants: ProductVariantOption[] = JSON.parse(variantsJson);
   const lowestVariant = parsedVariants.reduce(
     (min, v) => (v.price < min.price ? v : min),
@@ -1033,7 +1385,7 @@ export async function updateStoreProduct(
       const updatedFields = {
         title: clampString(input.title, 120, 'Produk Digital'),
         category: clampString(input.category, 60, 'Premium'),
-        description: clampString(input.description, 600, 'Produk digital resmi bergaransi.'),
+        description: clampString(input.description, 2000, 'Produk digital resmi bergaransi.'),
         usageGuide: clampString(
           input.usageGuide,
           2500,
@@ -1057,6 +1409,8 @@ export async function updateStoreProduct(
       return {
         id: cleanId,
         ...updatedFields,
+        iconUrl: normalizeTheSvgIconUrl(resolvedIcon),
+        benefitsText: input.benefitsText || '',
         createdAt: existingData.createdAt || null,
         updatedAt: null,
       };
@@ -1142,7 +1496,7 @@ export async function addAdminStockAccount(input: {
     await updateDoc(prodRef, {
       title: clampString(existingData?.title || input.product.title, 120, 'Produk'),
       category: clampString(existingData?.category || input.product.category, 60, 'Premium'),
-      description: clampString(existingData?.description || input.product.description, 600, 'Deskripsi'),
+      description: clampString(existingData?.description || input.product.description, 2000, 'Deskripsi'),
       usageGuide: clampString(existingData?.usageGuide || input.product.usageGuide || '', 2500, ''),
       variantsJson:
         existingData?.variantsJson || input.product.variantsJson || serializeVariants(variants),
@@ -1228,7 +1582,7 @@ export async function deleteAdminStockAccount(stock: StoreStockItemRecord): Prom
         await updateDoc(prodRef, {
           title: clampString(existingData.title, 120, 'Produk'),
           category: clampString(existingData.category, 60, 'Premium'),
-          description: clampString(existingData.description, 600, 'Deskripsi'),
+          description: clampString(existingData.description, 2000, 'Deskripsi'),
           usageGuide: clampString(existingData.usageGuide || '', 2500, ''),
           variantsJson: existingData.variantsJson || '[]',
           price: Number(existingData.price || 0),
@@ -1877,5 +2231,173 @@ export async function dismissRestockAlert(alertId: string): Promise<void> {
     await deleteDoc(doc(db, 'storeRestockAlerts', alertId));
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, `storeRestockAlerts/${alertId}`);
+  }
+}
+
+// ==========================================
+// PROMO / VOUCHER CODES (/promo & /cart)
+// ==========================================
+export function subscribeStorePromos(
+  onData: (promos: StorePromoRecord[]) => void,
+  onError?: (err: unknown) => void
+) {
+  const path = 'storePromos';
+  const q = query(collection(db, path), where('discountValue', '>=', 1));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const items: StorePromoRecord[] = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as Omit<StorePromoRecord, 'id'>),
+      }));
+      items.sort((a, b) => {
+        const aMs = a.createdAt?.toMillis?.() ?? 0;
+        const bMs = b.createdAt?.toMillis?.() ?? 0;
+        return bMs - aMs;
+      });
+      onData(items);
+    },
+    (error) => {
+      if (onError) onError(error);
+      handleFirestoreError(error, OperationType.LIST, path);
+    }
+  );
+}
+
+function normalizePromoCode(rawCode: string): string {
+  const cleaned = String(rawCode || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9_\-]/g, '');
+  return cleaned.slice(0, 32);
+}
+
+export async function createStorePromo(input: {
+  code: string;
+  title: string;
+  description: string;
+  discountType: 'percent' | 'fixed';
+  discountValue: number;
+  minPurchase: number;
+  isActive: boolean;
+}): Promise<StorePromoRecord> {
+  const cleanCode = normalizePromoCode(input.code);
+  if (cleanCode.length < 2) {
+    throw new Error('Kode promo minimal 2 karakter (huruf/angka tanpa spasi).');
+  }
+
+  const promoId = sanitizeId(`promo_${cleanCode.toLowerCase()}`);
+  const path = `storePromos/${promoId}`;
+
+  const cleanType = input.discountType === 'fixed' ? 'fixed' : 'percent';
+  const rawVal = Math.round(Number(input.discountValue) || 0);
+  const cleanVal =
+    cleanType === 'percent'
+      ? Math.max(1, Math.min(100, rawVal))
+      : Math.max(1, Math.min(100000000, rawVal));
+  const cleanMin = Math.max(0, Math.min(100000000, Math.round(Number(input.minPurchase) || 0)));
+
+  const payload = {
+    code: cleanCode,
+    title: clampString(
+      input.title,
+      80,
+      cleanType === 'percent' ? `Diskon ${cleanVal}%` : `Potongan Rp ${cleanVal.toLocaleString('id-ID')}`
+    ),
+    description: clampString(input.description, 200, ''),
+    discountType: cleanType as 'percent' | 'fixed',
+    discountValue: cleanVal,
+    minPurchase: cleanMin,
+    isActive: Boolean(input.isActive),
+  };
+
+  try {
+    await setDoc(doc(db, 'storePromos', promoId), {
+      ...payload,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return {
+      id: promoId,
+      ...payload,
+      createdAt: null,
+      updatedAt: null,
+    };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+  }
+}
+
+export async function updateStorePromo(
+  promoId: string,
+  input: {
+    code: string;
+    title: string;
+    description: string;
+    discountType: 'percent' | 'fixed';
+    discountValue: number;
+    minPurchase: number;
+    isActive: boolean;
+  }
+): Promise<StorePromoRecord> {
+  const cleanId = sanitizeId(promoId);
+  const path = `storePromos/${cleanId}`;
+  const cleanCode = normalizePromoCode(input.code);
+  if (cleanCode.length < 2) {
+    throw new Error('Kode promo minimal 2 karakter (huruf/angka tanpa spasi).');
+  }
+
+  const cleanType = input.discountType === 'fixed' ? 'fixed' : 'percent';
+  const rawVal = Math.round(Number(input.discountValue) || 0);
+  const cleanVal =
+    cleanType === 'percent'
+      ? Math.max(1, Math.min(100, rawVal))
+      : Math.max(1, Math.min(100000000, rawVal));
+  const cleanMin = Math.max(0, Math.min(100000000, Math.round(Number(input.minPurchase) || 0)));
+
+  const payload = {
+    code: cleanCode,
+    title: clampString(
+      input.title,
+      80,
+      cleanType === 'percent' ? `Diskon ${cleanVal}%` : `Potongan Rp ${cleanVal.toLocaleString('id-ID')}`
+    ),
+    description: clampString(input.description, 200, ''),
+    discountType: cleanType as 'percent' | 'fixed',
+    discountValue: cleanVal,
+    minPurchase: cleanMin,
+    isActive: Boolean(input.isActive),
+  };
+
+  try {
+    const promoRef = doc(db, 'storePromos', cleanId);
+    const snap = await getDoc(promoRef);
+    if (!snap.exists()) {
+      return await createStorePromo(input);
+    }
+    const existingData = snap.data();
+    await updateDoc(promoRef, {
+      ...payload,
+      createdAt: existingData.createdAt || serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return {
+      id: cleanId,
+      ...payload,
+      createdAt: existingData.createdAt || null,
+      updatedAt: null,
+    };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, path);
+  }
+}
+
+export async function deleteStorePromo(promoId: string): Promise<void> {
+  const cleanId = sanitizeId(promoId);
+  const path = `storePromos/${cleanId}`;
+  try {
+    await deleteDoc(doc(db, 'storePromos', cleanId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
   }
 }

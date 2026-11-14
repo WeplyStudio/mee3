@@ -21,7 +21,7 @@
           "type": "string",
           "description": "Detailed description and warranty terms",
           "minLength": 1,
-          "maxLength": 600
+          "maxLength": 2000
         },
         "usageGuide": {
           "type": "string",
@@ -31,9 +31,9 @@
         },
         "variantsJson": {
           "type": "string",
-          "description": "JSON serialized list of ProductVariantOption items including deliveryType",
+          "description": "JSON serialized list of ProductVariantOption items including deliveryType, iconUrl, and benefitsText",
           "minLength": 2,
-          "maxLength": 4000
+          "maxLength": 8000
         },
         "price": {
           "type": "number",
@@ -632,6 +632,70 @@
         }
       },
       "required": ["email", "createdAt"]
+    },
+    "StorePromo": {
+      "title": "StorePromo",
+      "description": "Promo / voucher code managed by admin at /promo and applied on /cart checkout",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Uppercase promo code (e.g. HEMAT10, GAJIAN5K)",
+          "minLength": 2,
+          "maxLength": 32,
+          "pattern": "^[A-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Promo display title",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "description": {
+          "type": "string",
+          "description": "Promo terms description",
+          "minLength": 0,
+          "maxLength": 200
+        },
+        "discountType": {
+          "type": "string",
+          "description": "Discount calculation type",
+          "enum": ["percent", "fixed"]
+        },
+        "discountValue": {
+          "type": "number",
+          "description": "Percentage (1-100) or fixed IDR discount amount"
+        },
+        "minPurchase": {
+          "type": "number",
+          "description": "Minimum subtotal in IDR required to apply promo (0 for no minimum)"
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Whether the promo code can currently be applied by buyers"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp"
+        }
+      },
+      "required": [
+        "code",
+        "title",
+        "description",
+        "discountType",
+        "discountValue",
+        "minPurchase",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ]
     }
   },
   "firestore": {
@@ -658,6 +722,10 @@
     "/storeRestockAlerts/{alertId}": {
       "schema": { "$ref": "#/entities/StoreRestockAlert" },
       "description": "User restock notification subscriptions isolated per user and admin"
+    },
+    "/storePromos/{promoId}": {
+      "schema": { "$ref": "#/entities/StorePromo" },
+      "description": "Promo codes managed by admin at /promo for cart discounts"
     },
     "/admins/{adminId}": {
       "schema": { "$ref": "#/entities/AdminMember" },

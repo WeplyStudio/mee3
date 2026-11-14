@@ -100,7 +100,22 @@ function parseLocationFromUrl(currentLang: Language = 'en'): { page: PageType; p
     return { page: 'bio', project: null, path: '/bio' };
   }
 
-  if (route === '/store' || route === '/shop' || route.startsWith('/store/')) {
+  if (
+    route === '/store' ||
+    route === '/shop' ||
+    route.startsWith('/store/') ||
+    route.startsWith('/produk/') ||
+    route === '/cart' ||
+    route.startsWith('/pay/') ||
+    route.startsWith('/receipt/') ||
+    route === '/ulasan' ||
+    route === '/transaksi' ||
+    route === '/refund' ||
+    route.startsWith('/ticket/') ||
+    route === '/dashboard' ||
+    route === '/new/product' ||
+    route === '/promo'
+  ) {
     return { page: 'store', project: null, path: route === '/shop' ? '/store' : rawPath };
   }
 
@@ -711,14 +726,14 @@ export default function App() {
           </div>
         </ScrollReveal>
 
-        {/* SCROLL-DRIVEN ANIMATED QUOTE WITH COLOR INTERPOLATION & SLIDE UP */}
-        <ScrollReveal distance={28}>
-          <AnimatedQuote
-            text={t.quoteCenter}
-            onOpenStory={() => navigateTo('aboutme')}
-            myStoryLabel={t.myStory}
-          />
-        </ScrollReveal>
+        {/* SCROLL-LOCKED MY STORY WITH SMOOTH GRAY-TO-BLACK FILL & STABILO HIGHLIGHTER */}
+        <AnimatedQuote
+          text={t.quoteCenter}
+          onOpenStory={() => navigateTo('aboutme')}
+          myStoryLabel={t.myStory}
+          scrollHintLabel={t.storyScrollHint}
+          scrollContinueLabel={t.storyScrollContinue}
+        />
       </section>
 
       {/* ------------------------------------------------------------- */}

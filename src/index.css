@@ -44,6 +44,10 @@ strong {
   font-weight: 500 !important;
 }
 
+.font-story-heavy {
+  font-weight: 700 !important;
+}
+
 @keyframes wave {
   0% { transform: rotate(0deg); }
   20% { transform: rotate(14deg); }

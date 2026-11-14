@@ -84,9 +84,9 @@ service cloud.firestore {
         ]) &&
         data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
         data.category is string && data.category.size() >= 1 && data.category.size() <= 60 &&
-        data.description is string && data.description.size() >= 1 && data.description.size() <= 600 &&
+        data.description is string && data.description.size() >= 1 && data.description.size() <= 2000 &&
         data.usageGuide is string && data.usageGuide.size() >= 0 && data.usageGuide.size() <= 2500 &&
-        data.variantsJson is string && data.variantsJson.size() >= 2 && data.variantsJson.size() <= 4000 &&
+        data.variantsJson is string && data.variantsJson.size() >= 2 && data.variantsJson.size() <= 8000 &&
         data.price is number && data.price >= 0 && data.price <= 1000000000 &&
         data.durationLabel is string && data.durationLabel.size() >= 1 && data.durationLabel.size() <= 60 &&
         data.stockCount is number && data.stockCount >= 0 && data.stockCount <= 100000 &&
@@ -346,6 +346,43 @@ service cloud.firestore {
         data.updatedAt is timestamp;
     }
 
+    function isValidStorePromo(data) {
+      return data.keys().hasAll([
+          'code',
+          'title',
+          'description',
+          'discountType',
+          'discountValue',
+          'minPurchase',
+          'isActive',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'code',
+          'title',
+          'description',
+          'discountType',
+          'discountValue',
+          'minPurchase',
+          'isActive',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.code is string && data.code.size() >= 2 && data.code.size() <= 32 && data.code.matches('^[A-Z0-9_\\-]+$') &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 80 &&
+        data.description is string && data.description.size() >= 0 && data.description.size() <= 200 &&
+        data.discountType is string && data.discountType.size() <= 16 && data.discountType in ['percent', 'fixed'] &&
+        data.discountValue is number && data.discountValue >= 1 && (
+          (data.discountType == 'percent' && data.discountValue <= 100) ||
+          (data.discountType == 'fixed' && data.discountValue <= 100000000)
+        ) &&
+        data.minPurchase is number && data.minPurchase >= 0 && data.minPurchase <= 100000000 &&
+        data.isActive is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
     // Boot connection test path
     match /test/{docId} {
       allow get: if isValidId(docId);
@@ -552,6 +589,19 @@ service cloud.firestore {
       allow delete: if isVerifiedUser() && isValidId(alertId) && (
         resource.data.userUid == request.auth.uid || isAdmin()
       );
+    }
+
+    // Store Promo & Voucher Codes
+    match /storePromos/{promoId} {
+      allow get: if isValidId(promoId);
+      allow list: if resource.data.discountValue >= 1;
+      allow create: if isAdmin() && isValidId(promoId) && isValidStorePromo(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidId(promoId) && isValidStorePromo(incoming()) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time;
+      allow delete: if isAdmin() && isValidId(promoId);
     }
   }
 }
