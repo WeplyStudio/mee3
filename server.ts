@@ -307,6 +307,141 @@ app.post('/api/settings', (req: Request, res: Response) => {
 
 
 
+// ==========================================
+// WIJAYAPAY PAYMENT GATEWAY INTEGRATION
+// POST https://gateway.wijayapay.com/api/transaction/create
+// GET  https://gateway.wijayapay.com/api/get-status
+// Supported methods: QRIS, BCAVA, BNIVA, ALFAMART, INDOMARET
+// ==========================================
+const WIJAYAPAY_CREATE_URL = 'https://gateway.wijayapay.com/api/transaction/create';
+const WIJAYAPAY_STATUS_URL = 'https://gateway.wijayapay.com/api/get-status';
+
+const ACTIVE_WIJAYAPAY_MERCHANT = 'WP6ae352b40b0fd';
+const ACTIVE_WIJAYAPAY_API_KEY = '0e0fcbec1db89d89de2a6aaee5';
+
+function getWijayapayCredentials() {
+  const merchantCode = process.env.WIJAYAPAY_MERCHANT_CODE?.trim() || ACTIVE_WIJAYAPAY_MERCHANT;
+  const apiKey = process.env.WIJAYAPAY_API_KEY?.trim() || ACTIVE_WIJAYAPAY_API_KEY;
+  return { merchantCode, apiKey };
+}
+
+async function computeMd5Hex(input: string): Promise<string> {
+  const cryptoMod = await import('crypto');
+  return cryptoMod.createHash('md5').update(input).digest('hex');
+}
+
+app.post('/api/wijayapay/create-transaction', async (req: Request, res: Response) => {
+  try {
+    const rawMethod = String(req.body?.payment_method || req.body?.code_payment || 'QRIS')
+      .toUpperCase()
+      .trim();
+    const allowedMethods = ['QRIS', 'BCAVA', 'BNIVA', 'ALFAMART', 'INDOMARET'];
+    const paymentMethod = allowedMethods.includes(rawMethod) ? rawMethod : 'QRIS';
+
+    // Enforce Wijayapay channel minimum nominal (QRIS min 500, VA & Retail min 10000)
+    const minNominal = paymentMethod === 'QRIS' ? 500 : 10000;
+    const rawNominal = Math.round(Number(req.body?.nominal || req.body?.amount || minNominal));
+    const nominal = Math.max(minNominal, rawNominal);
+    const refId = String(req.body?.ref_id || `INV-${Date.now()}`).trim().slice(0, 60);
+
+    const { merchantCode, apiKey } = getWijayapayCredentials();
+    const signature = await computeMd5Hex(`${merchantCode}${apiKey}${refId}`);
+
+    const formBody = new URLSearchParams({
+      code_merchant: merchantCode,
+      api_key: apiKey,
+      ref_id: refId,
+      code_payment: paymentMethod,
+      nominal: String(nominal),
+    });
+
+    const gwRes = await fetch(WIJAYAPAY_CREATE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: 'application/json',
+        'User-Agent': 'WijayaPay-PHP/1.0',
+        'X-Signature': signature,
+      },
+      body: formBody.toString(),
+    });
+
+    const gwJson = (await gwRes.json()) as any;
+    if (gwJson && gwJson.success && gwJson.data) {
+      const d = gwJson.data;
+      const resolvedPayCode = String(
+        d.pay_code ||
+          d.nomor_va ||
+          d.nomor_pembayaran ||
+          d.va_number ||
+          d.kode_bayar ||
+          d.kode_pembayaran ||
+          ''
+      ).trim();
+      gwJson.data = {
+        ...d,
+        pay_code: resolvedPayCode,
+        nomor_va: String(d.nomor_va || resolvedPayCode).trim(),
+        nomor_pembayaran: String(d.nomor_pembayaran || resolvedPayCode).trim(),
+      };
+      return res.json(gwJson);
+    }
+
+    return res.status(400).json({
+      success: false,
+      error: gwJson?.message || gwJson?.error || 'Gagal membuat tagihan pembayaran otomatis.',
+      raw: gwJson,
+    });
+  } catch (err: any) {
+    console.error('[Payment Create Transaction Error]:', err);
+    return res.status(500).json({
+      success: false,
+      error: err?.message || 'Gagal menghubungi server pembayaran.',
+    });
+  }
+});
+
+app.get('/api/wijayapay/check-status', async (req: Request, res: Response) => {
+  try {
+    const refId = String(req.query.ref_id || '').trim();
+    if (!refId) {
+      return res.status(400).json({ success: false, error: 'Kode referensi wajib diisi.' });
+    }
+
+    const { merchantCode, apiKey } = getWijayapayCredentials();
+    const queryParams = new URLSearchParams({
+      code_merchant: merchantCode,
+      api_key: apiKey,
+      ref_id: refId,
+    });
+
+    const gwRes = await fetch(`${WIJAYAPAY_STATUS_URL}?${queryParams.toString()}`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'WijayaPay-PHP/1.0',
+      },
+    });
+
+    const gwJson = (await gwRes.json()) as any;
+    return res.json({
+      success: true,
+      status_pembayaran: gwJson?.status_pembayaran || gwJson?.data?.status || 'pending',
+      data: gwJson?.data || null,
+    });
+  } catch (err: any) {
+    console.error('[Payment Check Status Error]:', err);
+    return res.status(500).json({
+      success: false,
+      error: err?.message || 'Gagal mengecek status pembayaran.',
+    });
+  }
+});
+
+app.post('/api/wijayapay/callback', (req: Request, res: Response) => {
+  res.json({ status: true });
+});
+
 // Health check endpoint
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({ status: 'ok', database: 'SQLite Cloudflare D1', timestamp: new Date().toISOString() });

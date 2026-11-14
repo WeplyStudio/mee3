@@ -11,6 +11,7 @@ interface FooterProps {
   onNavigateHome: () => void;
   onNavigateAboutMe: () => void;
   onNavigateBio?: () => void;
+  onNavigateStore?: () => void;
   onOpenContact: () => void;
   onScrollToProjects: () => void;
   onScrollToServices?: () => void;
@@ -23,6 +24,7 @@ export const Footer: React.FC<FooterProps> = ({
   onNavigateHome,
   onNavigateAboutMe,
   onNavigateBio,
+  onNavigateStore,
   onOpenContact,
   onScrollToProjects,
   onScrollToServices,
@@ -222,13 +224,22 @@ export const Footer: React.FC<FooterProps> = ({
                   >
                     <span>{t.projects}</span>
                   </button>
-                  {onScrollToFaq && (
+                  {onNavigateStore ? (
                     <button
-                      onClick={onScrollToFaq}
+                      onClick={onNavigateStore}
                       className="h-5 inline-flex items-center hover:text-zinc-950 transition-colors duration-200 cursor-pointer lowercase text-left"
                     >
-                      <span>{t.faq}</span>
+                      <span>store</span>
                     </button>
+                  ) : (
+                    onScrollToFaq && (
+                      <button
+                        onClick={onScrollToFaq}
+                        className="h-5 inline-flex items-center hover:text-zinc-950 transition-colors duration-200 cursor-pointer lowercase text-left"
+                      >
+                        <span>{t.faq}</span>
+                      </button>
+                    )
                   )}
                 </div>
               </ScrollReveal>

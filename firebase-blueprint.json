@@ -1,0 +1,667 @@
+{
+  "entities": {
+    "StoreProduct": {
+      "title": "StoreProduct",
+      "description": "Digital product available in /store with variations, delivery type (account or redeem code), and custom usage instructions",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Product display name",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "category": {
+          "type": "string",
+          "description": "Product category such as Streaming, Music, AI, Design",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description and warranty terms",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "usageGuide": {
+          "type": "string",
+          "description": "Step-by-step instructions on how to use the product, displayed below account info on receipt",
+          "minLength": 0,
+          "maxLength": 2500
+        },
+        "variantsJson": {
+          "type": "string",
+          "description": "JSON serialized list of ProductVariantOption items including deliveryType",
+          "minLength": 2,
+          "maxLength": 4000
+        },
+        "price": {
+          "type": "number",
+          "description": "Starting price in IDR"
+        },
+        "durationLabel": {
+          "type": "string",
+          "description": "Default subscription duration label (e.g. 30 Hari)",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "stockCount": {
+          "type": "number",
+          "description": "Current number of available items in stock"
+        },
+        "ratingAvg": {
+          "type": "number",
+          "description": "Average customer rating from 0 to 5"
+        },
+        "ratingCount": {
+          "type": "number",
+          "description": "Total number of customer ratings"
+        },
+        "badge": {
+          "type": "string",
+          "description": "Highlight label such as Best Seller or Instant",
+          "minLength": 0,
+          "maxLength": 40
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp"
+        }
+      },
+      "required": [
+        "title",
+        "category",
+        "description",
+        "usageGuide",
+        "variantsJson",
+        "price",
+        "durationLabel",
+        "stockCount",
+        "ratingAvg",
+        "ratingCount",
+        "badge",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "StoreStockItem": {
+      "title": "StoreStockItem",
+      "description": "Individual account credential (email & password) or redeem code bound to a product and specific variation",
+      "type": "object",
+      "properties": {
+        "productId": {
+          "type": "string",
+          "description": "ID of the StoreProduct this credential belongs to",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "productTitle": {
+          "type": "string",
+          "description": "Title of the product",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "variantId": {
+          "type": "string",
+          "description": "ID of the product variation this item belongs to",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "variantLabel": {
+          "type": "string",
+          "description": "Display label of the variation",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "accountEmail": {
+          "type": "string",
+          "description": "Account login email/username OR redeem code/voucher key",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "accountPassword": {
+          "type": "string",
+          "description": "Account password (empty string when item is a redeem code)",
+          "minLength": 0,
+          "maxLength": 180
+        },
+        "accountNotes": {
+          "type": "string",
+          "description": "Additional profile PIN or usage instructions",
+          "minLength": 0,
+          "maxLength": 300
+        },
+        "status": {
+          "type": "string",
+          "description": "Stock availability status",
+          "enum": ["available", "sold", "refunded"]
+        },
+        "buyerUid": {
+          "type": "string",
+          "description": "UID of the buyer who purchased this item (empty when available)",
+          "minLength": 0,
+          "maxLength": 128
+        },
+        "orderId": {
+          "type": "string",
+          "description": "Order ID linked when sold",
+          "minLength": 0,
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp"
+        }
+      },
+      "required": [
+        "productId",
+        "productTitle",
+        "variantId",
+        "variantLabel",
+        "accountEmail",
+        "accountPassword",
+        "accountNotes",
+        "status",
+        "buyerUid",
+        "orderId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "StoreOrder": {
+      "title": "StoreOrder",
+      "description": "Customer purchase transaction with automatic credential delivery, product usage guide, rating, and refund tracking",
+      "type": "object",
+      "properties": {
+        "invoiceCode": {
+          "type": "string",
+          "description": "Human-readable invoice reference code (ref_id)",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "trxReference": {
+          "type": "string",
+          "description": "Payment transaction reference",
+          "minLength": 0,
+          "maxLength": 60
+        },
+        "productId": {
+          "type": "string",
+          "description": "Purchased product ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "productTitle": {
+          "type": "string",
+          "description": "Purchased product title",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "variantId": {
+          "type": "string",
+          "description": "Purchased variation ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "variantLabel": {
+          "type": "string",
+          "description": "Purchased variation label",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "durationLabel": {
+          "type": "string",
+          "description": "Subscription duration label",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "price": {
+          "type": "number",
+          "description": "Amount paid in IDR"
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "Payment method (QRIS, BCAVA, BNIVA, ALFAMART, INDOMARET)",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "status": {
+          "type": "string",
+          "description": "Transaction lifecycle status",
+          "enum": ["paid", "refund_requested", "refunded", "refund_rejected"]
+        },
+        "stockId": {
+          "type": "string",
+          "description": "ID of the delivered StoreStockItem",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "deliveredEmail": {
+          "type": "string",
+          "description": "Automatically delivered account email/username OR redeem code",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "deliveredPassword": {
+          "type": "string",
+          "description": "Automatically delivered account password (empty string when item is a redeem code)",
+          "minLength": 0,
+          "maxLength": 180
+        },
+        "deliveredNotes": {
+          "type": "string",
+          "description": "Automatically delivered account notes/PIN",
+          "minLength": 0,
+          "maxLength": 300
+        },
+        "usageGuide": {
+          "type": "string",
+          "description": "Product-specific usage instructions displayed below account info",
+          "minLength": 0,
+          "maxLength": 2500
+        },
+        "buyerUid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the buyer",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "buyerEmail": {
+          "type": "string",
+          "description": "Email address of the buyer",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "buyerName": {
+          "type": "string",
+          "description": "Display name of the buyer",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "purchasedAtMs": {
+          "type": "number",
+          "description": "Purchase epoch milliseconds for enforcing the 10-minute minimum and 3-day maximum refund window"
+        },
+        "rating": {
+          "type": "number",
+          "description": "Star rating submitted by the buyer (0 if not rated yet, 1-5 once rated)"
+        },
+        "reviewComment": {
+          "type": "string",
+          "description": "Review text submitted by the buyer",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "refundReason": {
+          "type": "string",
+          "description": "Reason provided by the buyer when requesting a refund",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "refundRequestedAtMs": {
+          "type": "number",
+          "description": "Epoch milliseconds when refund was requested (0 if none)"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp"
+        }
+      },
+      "required": [
+        "invoiceCode",
+        "trxReference",
+        "productId",
+        "productTitle",
+        "variantId",
+        "variantLabel",
+        "durationLabel",
+        "price",
+        "paymentMethod",
+        "status",
+        "stockId",
+        "deliveredEmail",
+        "deliveredPassword",
+        "deliveredNotes",
+        "usageGuide",
+        "buyerUid",
+        "buyerEmail",
+        "buyerName",
+        "purchasedAtMs",
+        "rating",
+        "reviewComment",
+        "refundReason",
+        "refundRequestedAtMs",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "StoreRefundTicket": {
+      "title": "StoreRefundTicket",
+      "description": "Refund ticket with 1-2 compressed proof images (deleted automatically upon ticket closure) and admin-initiated chat session at /store/ticket/:refundId",
+      "type": "object",
+      "properties": {
+        "orderId": {
+          "type": "string",
+          "description": "ID of the StoreOrder being refunded",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "invoiceCode": {
+          "type": "string",
+          "description": "Order invoice code",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "productId": {
+          "type": "string",
+          "description": "Product ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "productTitle": {
+          "type": "string",
+          "description": "Product and variation title",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "price": {
+          "type": "number",
+          "description": "Order price in IDR"
+        },
+        "buyerUid": {
+          "type": "string",
+          "description": "Buyer Firebase UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "buyerEmail": {
+          "type": "string",
+          "description": "Buyer email",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "buyerName": {
+          "type": "string",
+          "description": "Buyer display name",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "reason": {
+          "type": "string",
+          "description": "Buyer explanation of the issue",
+          "minLength": 3,
+          "maxLength": 500
+        },
+        "solutionType": {
+          "type": "string",
+          "description": "Preferred resolution: refund_money (pengembalian dana) or replace_item (pengiriman barang ulang)",
+          "enum": ["refund_money", "replace_item"]
+        },
+        "status": {
+          "type": "string",
+          "description": "Ticket lifecycle status",
+          "enum": ["open", "approved_refund", "approved_replace", "rejected"]
+        },
+        "canUserReply": {
+          "type": "boolean",
+          "description": "False initially; becomes true only when Admin sends a message so user cannot initiate chat"
+        },
+        "proofImagesJson": {
+          "type": "string",
+          "description": "JSON serialized array of 1-2 compressed base64 proof images while open; wiped to '[]' when ticket is closed",
+          "minLength": 2,
+          "maxLength": 900000
+        },
+        "messagesJson": {
+          "type": "string",
+          "description": "JSON serialized array of ticket chat messages",
+          "minLength": 2,
+          "maxLength": 60000
+        },
+        "replacementCredentials": {
+          "type": "string",
+          "description": "Optional replacement account/redeem code delivered if solution is replace_item",
+          "minLength": 0,
+          "maxLength": 500
+        },
+        "createdAtMs": {
+          "type": "number",
+          "description": "Creation epoch milliseconds"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp"
+        }
+      },
+      "required": [
+        "orderId",
+        "invoiceCode",
+        "productId",
+        "productTitle",
+        "price",
+        "buyerUid",
+        "buyerEmail",
+        "buyerName",
+        "reason",
+        "solutionType",
+        "status",
+        "canUserReply",
+        "proofImagesJson",
+        "messagesJson",
+        "replacementCredentials",
+        "createdAtMs",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "StoreReview": {
+      "title": "StoreReview",
+      "description": "Public verified buyer rating and review for a store product with toxic word filtering",
+      "type": "object",
+      "properties": {
+        "productId": {
+          "type": "string",
+          "description": "Reviewed product ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "productTitle": {
+          "type": "string",
+          "description": "Reviewed product title",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "orderId": {
+          "type": "string",
+          "description": "Associated order ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "buyerUid": {
+          "type": "string",
+          "description": "UID of the verified buyer",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "buyerName": {
+          "type": "string",
+          "description": "Public display name of the buyer",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "rating": {
+          "type": "number",
+          "description": "Star rating from 1 to 5"
+        },
+        "comment": {
+          "type": "string",
+          "description": "Censored review comment",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp"
+        }
+      },
+      "required": [
+        "productId",
+        "productTitle",
+        "orderId",
+        "buyerUid",
+        "buyerName",
+        "rating",
+        "comment",
+        "createdAt"
+      ]
+    },
+    "StoreRestockAlert": {
+      "title": "StoreRestockAlert",
+      "description": "User subscription to receive automatic notifications when an out-of-stock product is restocked",
+      "type": "object",
+      "properties": {
+        "productId": {
+          "type": "string",
+          "description": "Out-of-stock product ID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "productTitle": {
+          "type": "string",
+          "description": "Product title",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "userUid": {
+          "type": "string",
+          "description": "Subscriber Firebase UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userEmail": {
+          "type": "string",
+          "description": "Subscriber email for restock notification",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "status": {
+          "type": "string",
+          "description": "Alert state: waiting for restock or notified",
+          "enum": ["waiting", "notified"]
+        },
+        "notifiedAtMs": {
+          "type": "number",
+          "description": "Epoch milliseconds when restock notification was triggered"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp"
+        }
+      },
+      "required": [
+        "productId",
+        "productTitle",
+        "userUid",
+        "userEmail",
+        "status",
+        "notifiedAtMs",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminMember": {
+      "title": "AdminMember",
+      "description": "Trusted admin registry document keyed by admin UID",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "Admin verified email",
+          "minLength": 1,
+          "maxLength": 180
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp"
+        }
+      },
+      "required": ["email", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/storeProducts/{productId}": {
+      "schema": { "$ref": "#/entities/StoreProduct" },
+      "description": "Publicly readable digital products catalog; stockCount and rating fields updated on purchase/review/admin restock"
+    },
+    "/storeStock/{stockId}": {
+      "schema": { "$ref": "#/entities/StoreStockItem" },
+      "description": "Credential vault managed by admin per product variation and claimed atomically upon payment"
+    },
+    "/storeOrders/{orderId}": {
+      "schema": { "$ref": "#/entities/StoreOrder" },
+      "description": "Buyer orders containing delivered credentials, product usage guide, rating state, and refund requests"
+    },
+    "/storeRefundTickets/{ticketId}": {
+      "schema": { "$ref": "#/entities/StoreRefundTicket" },
+      "description": "Refund tickets with auto-compressed proof images (deleted on close) and admin-initiated ticket chat"
+    },
+    "/storeReviews/{reviewId}": {
+      "schema": { "$ref": "#/entities/StoreReview" },
+      "description": "Public product reviews submitted by verified buyers after completing a purchase"
+    },
+    "/storeRestockAlerts/{alertId}": {
+      "schema": { "$ref": "#/entities/StoreRestockAlert" },
+      "description": "User restock notification subscriptions isolated per user and admin"
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminMember" },
+      "description": "Admin role membership collection"
+    }
+  }
+}

@@ -33,6 +33,7 @@ import { ProjectsPage } from './components/ProjectsPage';
 import { ContactPage } from './components/ContactPage';
 import { ProjectDetailPage } from './components/ProjectDetailPage';
 import { BioPage } from './components/BioPage';
+import { StorePage } from './components/StorePage';
 import { NotFoundPage } from './components/NotFoundPage';
 const ContactModal = lazy(() => import('./components/ContactModal').then(m => ({ default: m.ContactModal })));
 
@@ -42,7 +43,7 @@ import {
   fetchProjectsFromFirestore,
 } from './lib/firebase';
 
-type PageType = 'home' | 'aboutme' | 'projects' | 'contact' | 'project-detail' | 'bio' | '404';
+type PageType = 'home' | 'aboutme' | 'projects' | 'contact' | 'project-detail' | 'bio' | 'store' | '404';
 
 interface NavigationTarget {
   page: PageType;
@@ -97,6 +98,10 @@ function parseLocationFromUrl(currentLang: Language = 'en'): { page: PageType; p
 
   if (route === '/bio' || route === '/links') {
     return { page: 'bio', project: null, path: '/bio' };
+  }
+
+  if (route === '/store' || route === '/shop' || route.startsWith('/store/')) {
+    return { page: 'store', project: null, path: route === '/shop' ? '/store' : rawPath };
   }
 
   if (route === '/404') {
@@ -215,6 +220,8 @@ export default function App() {
       title = 'get in touch';
     } else if (page === 'bio') {
       title = 'bio';
+    } else if (page === 'store') {
+      title = 'store';
     } else if (page === 'home') {
       title = 'jason';
     } else if (page === '404') {
@@ -268,7 +275,7 @@ export default function App() {
             else if (pending.page === 'projects') path = '/projects';
             else if (pending.page === 'contact') path = '/contact';
             else if (pending.page === 'bio') path = '/bio';
-            else if (pending.page === 'admin') path = '/admin';
+            else if (pending.page === 'store') path = '/store';
             else if (pending.page === '404') path = '/404';
             else if (pending.page === 'project-detail' && pending.project) path = `/project/${pending.project.id}`;
             else path = `/${pending.page}`;
@@ -425,6 +432,8 @@ export default function App() {
       pageTitle = lang === 'id' ? 'Hubungi Saya — Jason' : 'Get in Touch — Jason';
     } else if (currentPage === 'bio') {
       pageTitle = 'Bio & Links — Jason';
+    } else if (currentPage === 'store') {
+      pageTitle = 'Digital Store — Jason';
     } else if (currentPage === '404') {
       pageTitle = '404 Not Found — Jason';
     }
@@ -547,6 +556,10 @@ export default function App() {
             }}
             onOpenBio={() => {
               navigateTo('bio');
+              setIsMenuOpen(false);
+            }}
+            onOpenStore={() => {
+              navigateTo('store');
               setIsMenuOpen(false);
             }}
             onScrollTo={(id) => {
@@ -1129,6 +1142,13 @@ export default function App() {
         navigateTo('contact');
       }}
     />
+  ) : currentPage === 'store' ? (
+    <StorePage
+      lang={lang}
+      onNavigateHome={() => {
+        navigateTo('home');
+      }}
+    />
   ) : currentPage === '404' ? (
     <NotFoundPage
       lang={lang}
@@ -1150,7 +1170,7 @@ export default function App() {
       {/* ------------------------------------------------------------- */}
       {/* UNIFIED STICKY ANIMATED FOOTER (REVEALED FROM UNDERNEATH) */}
       {/* ------------------------------------------------------------- */}
-      {currentPage !== 'admin' && currentPage !== '404' && (
+      {currentPage !== '404' && (
         <Footer
           footerProgress={footerProgress}
           lang={lang}
@@ -1162,6 +1182,9 @@ export default function App() {
           }}
           onNavigateBio={() => {
             navigateTo('bio');
+          }}
+          onNavigateStore={() => {
+            navigateTo('store');
           }}
           onOpenContact={() => {
             navigateTo('contact');
@@ -1208,7 +1231,7 @@ export default function App() {
       {/* ------------------------------------------------------------- */}
       {/* BOTTOM BLACK SCROLL PROGRESS BAR */}
       {/* ------------------------------------------------------------- */}
-      {currentPage !== 'admin' && currentPage !== '404' && <BottomScrollProgress currentPage={currentPage} />}
+      {currentPage !== '404' && <BottomScrollProgress currentPage={currentPage} />}
 
       {/* ------------------------------------------------------------- */}
       {/* VIEWPORT ZOOM & VERTICAL SLIDE PAGE TRANSITION OVERLAY */}

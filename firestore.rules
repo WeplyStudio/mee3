@@ -1,0 +1,557 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1: Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isVerifiedAdminEmail() {
+      return isVerifiedUser() && (
+        request.auth.token.email == 'matchboxdevelopment@gmail.com' ||
+        request.auth.token.email == 'weply.my.id@gmail.com'
+      );
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        request.auth.token.email == 'matchboxdevelopment@gmail.com' ||
+        request.auth.token.email == 'weply.my.id@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Validation Blueprints (Pillar 2: Anti-Update-Gap)
+    function isValidAdminMember(data) {
+      return data.keys().hasAll(['email', 'createdAt']) &&
+        data.keys().hasOnly(['email', 'createdAt']) &&
+        data.email is string && data.email.size() >= 1 && data.email.size() <= 180 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidStoreProduct(data) {
+      return data.keys().hasAll([
+          'title',
+          'category',
+          'description',
+          'usageGuide',
+          'variantsJson',
+          'price',
+          'durationLabel',
+          'stockCount',
+          'ratingAvg',
+          'ratingCount',
+          'badge',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'title',
+          'category',
+          'description',
+          'usageGuide',
+          'variantsJson',
+          'price',
+          'durationLabel',
+          'stockCount',
+          'ratingAvg',
+          'ratingCount',
+          'badge',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+        data.category is string && data.category.size() >= 1 && data.category.size() <= 60 &&
+        data.description is string && data.description.size() >= 1 && data.description.size() <= 600 &&
+        data.usageGuide is string && data.usageGuide.size() >= 0 && data.usageGuide.size() <= 2500 &&
+        data.variantsJson is string && data.variantsJson.size() >= 2 && data.variantsJson.size() <= 4000 &&
+        data.price is number && data.price >= 0 && data.price <= 1000000000 &&
+        data.durationLabel is string && data.durationLabel.size() >= 1 && data.durationLabel.size() <= 60 &&
+        data.stockCount is number && data.stockCount >= 0 && data.stockCount <= 100000 &&
+        data.ratingAvg is number && data.ratingAvg >= 0 && data.ratingAvg <= 5 &&
+        data.ratingCount is number && data.ratingCount >= 0 && data.ratingCount <= 1000000 &&
+        data.badge is string && data.badge.size() >= 0 && data.badge.size() <= 40 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidStoreStockItem(data) {
+      return data.keys().hasAll([
+          'productId',
+          'productTitle',
+          'variantId',
+          'variantLabel',
+          'accountEmail',
+          'accountPassword',
+          'accountNotes',
+          'status',
+          'buyerUid',
+          'orderId',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'productId',
+          'productTitle',
+          'variantId',
+          'variantLabel',
+          'accountEmail',
+          'accountPassword',
+          'accountNotes',
+          'status',
+          'buyerUid',
+          'orderId',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isValidId(data.productId) &&
+        data.productTitle is string && data.productTitle.size() >= 1 && data.productTitle.size() <= 120 &&
+        isValidId(data.variantId) &&
+        data.variantLabel is string && data.variantLabel.size() >= 1 && data.variantLabel.size() <= 120 &&
+        data.accountEmail is string && data.accountEmail.size() >= 1 && data.accountEmail.size() <= 180 &&
+        data.accountPassword is string && data.accountPassword.size() >= 0 && data.accountPassword.size() <= 180 &&
+        data.accountNotes is string && data.accountNotes.size() >= 0 && data.accountNotes.size() <= 300 &&
+        data.status is string && data.status.size() <= 20 && data.status in ['available', 'sold', 'refunded'] &&
+        data.buyerUid is string && data.buyerUid.size() >= 0 && data.buyerUid.size() <= 128 &&
+        data.orderId is string && data.orderId.size() >= 0 && data.orderId.size() <= 128 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidStoreOrder(data) {
+      return data.keys().hasAll([
+          'invoiceCode',
+          'trxReference',
+          'productId',
+          'productTitle',
+          'variantId',
+          'variantLabel',
+          'durationLabel',
+          'price',
+          'paymentMethod',
+          'status',
+          'stockId',
+          'deliveredEmail',
+          'deliveredPassword',
+          'deliveredNotes',
+          'usageGuide',
+          'buyerUid',
+          'buyerEmail',
+          'buyerName',
+          'purchasedAtMs',
+          'rating',
+          'reviewComment',
+          'refundReason',
+          'refundRequestedAtMs',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'invoiceCode',
+          'trxReference',
+          'productId',
+          'productTitle',
+          'variantId',
+          'variantLabel',
+          'durationLabel',
+          'price',
+          'paymentMethod',
+          'status',
+          'stockId',
+          'deliveredEmail',
+          'deliveredPassword',
+          'deliveredNotes',
+          'usageGuide',
+          'buyerUid',
+          'buyerEmail',
+          'buyerName',
+          'purchasedAtMs',
+          'rating',
+          'reviewComment',
+          'refundReason',
+          'refundRequestedAtMs',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.invoiceCode is string && data.invoiceCode.size() >= 1 && data.invoiceCode.size() <= 60 &&
+        data.trxReference is string && data.trxReference.size() >= 0 && data.trxReference.size() <= 60 &&
+        isValidId(data.productId) &&
+        data.productTitle is string && data.productTitle.size() >= 1 && data.productTitle.size() <= 120 &&
+        isValidId(data.variantId) &&
+        data.variantLabel is string && data.variantLabel.size() >= 1 && data.variantLabel.size() <= 120 &&
+        data.durationLabel is string && data.durationLabel.size() >= 1 && data.durationLabel.size() <= 60 &&
+        data.price is number && data.price >= 0 && data.price <= 1000000000 &&
+        data.paymentMethod is string && data.paymentMethod.size() >= 1 && data.paymentMethod.size() <= 60 &&
+        data.status is string && data.status.size() <= 30 && data.status in ['paid', 'refund_requested', 'refunded', 'refund_rejected'] &&
+        isValidId(data.stockId) &&
+        data.deliveredEmail is string && data.deliveredEmail.size() >= 1 && data.deliveredEmail.size() <= 180 &&
+        data.deliveredPassword is string && data.deliveredPassword.size() >= 0 && data.deliveredPassword.size() <= 180 &&
+        data.deliveredNotes is string && data.deliveredNotes.size() >= 0 && data.deliveredNotes.size() <= 300 &&
+        data.usageGuide is string && data.usageGuide.size() >= 0 && data.usageGuide.size() <= 2500 &&
+        isValidId(data.buyerUid) &&
+        data.buyerEmail is string && data.buyerEmail.size() >= 1 && data.buyerEmail.size() <= 180 &&
+        data.buyerName is string && data.buyerName.size() >= 1 && data.buyerName.size() <= 100 &&
+        data.purchasedAtMs is number && data.purchasedAtMs >= 0 &&
+        data.rating is number && data.rating >= 0 && data.rating <= 5 &&
+        data.reviewComment is string && data.reviewComment.size() >= 0 && data.reviewComment.size() <= 500 &&
+        data.refundReason is string && data.refundReason.size() >= 0 && data.refundReason.size() <= 500 &&
+        data.refundRequestedAtMs is number && data.refundRequestedAtMs >= 0 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidStoreRefundTicket(data) {
+      return data.keys().hasAll([
+          'orderId',
+          'invoiceCode',
+          'productId',
+          'productTitle',
+          'price',
+          'buyerUid',
+          'buyerEmail',
+          'buyerName',
+          'reason',
+          'solutionType',
+          'status',
+          'canUserReply',
+          'proofImagesJson',
+          'messagesJson',
+          'replacementCredentials',
+          'createdAtMs',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'orderId',
+          'invoiceCode',
+          'productId',
+          'productTitle',
+          'price',
+          'buyerUid',
+          'buyerEmail',
+          'buyerName',
+          'reason',
+          'solutionType',
+          'status',
+          'canUserReply',
+          'proofImagesJson',
+          'messagesJson',
+          'replacementCredentials',
+          'createdAtMs',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isValidId(data.orderId) &&
+        data.invoiceCode is string && data.invoiceCode.size() >= 1 && data.invoiceCode.size() <= 60 &&
+        isValidId(data.productId) &&
+        data.productTitle is string && data.productTitle.size() >= 1 && data.productTitle.size() <= 120 &&
+        data.price is number && data.price >= 0 && data.price <= 1000000000 &&
+        isValidId(data.buyerUid) &&
+        data.buyerEmail is string && data.buyerEmail.size() >= 1 && data.buyerEmail.size() <= 180 &&
+        data.buyerName is string && data.buyerName.size() >= 1 && data.buyerName.size() <= 100 &&
+        data.reason is string && data.reason.size() >= 3 && data.reason.size() <= 500 &&
+        data.solutionType is string && data.solutionType.size() <= 30 && data.solutionType in ['refund_money', 'replace_item'] &&
+        data.status is string && data.status.size() <= 30 && data.status in ['open', 'approved_refund', 'approved_replace', 'rejected'] &&
+        data.canUserReply is bool &&
+        data.proofImagesJson is string && data.proofImagesJson.size() >= 2 && data.proofImagesJson.size() <= 900000 &&
+        data.messagesJson is string && data.messagesJson.size() >= 2 && data.messagesJson.size() <= 60000 &&
+        data.replacementCredentials is string && data.replacementCredentials.size() >= 0 && data.replacementCredentials.size() <= 500 &&
+        data.createdAtMs is number && data.createdAtMs >= 0 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidStoreReview(data) {
+      return data.keys().hasAll([
+          'productId',
+          'productTitle',
+          'orderId',
+          'buyerUid',
+          'buyerName',
+          'rating',
+          'comment',
+          'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'productId',
+          'productTitle',
+          'orderId',
+          'buyerUid',
+          'buyerName',
+          'rating',
+          'comment',
+          'createdAt'
+        ]) &&
+        isValidId(data.productId) &&
+        data.productTitle is string && data.productTitle.size() >= 1 && data.productTitle.size() <= 120 &&
+        isValidId(data.orderId) &&
+        isValidId(data.buyerUid) &&
+        data.buyerUid == request.auth.uid &&
+        data.buyerName is string && data.buyerName.size() >= 1 && data.buyerName.size() <= 100 &&
+        data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+        data.comment is string && data.comment.size() >= 1 && data.comment.size() <= 500 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidStoreRestockAlert(data) {
+      return data.keys().hasAll([
+          'productId',
+          'productTitle',
+          'userUid',
+          'userEmail',
+          'status',
+          'notifiedAtMs',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'productId',
+          'productTitle',
+          'userUid',
+          'userEmail',
+          'status',
+          'notifiedAtMs',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        isValidId(data.productId) &&
+        data.productTitle is string && data.productTitle.size() >= 1 && data.productTitle.size() <= 120 &&
+        isValidId(data.userUid) &&
+        data.userEmail is string && data.userEmail.size() >= 1 && data.userEmail.size() <= 180 &&
+        data.status is string && data.status.size() <= 20 && data.status in ['waiting', 'notified'] &&
+        data.notifiedAtMs is number && data.notifiedAtMs >= 0 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // Boot connection test path
+    match /test/{docId} {
+      allow get: if isValidId(docId);
+      allow list, create, update, delete: if false;
+    }
+
+    // Admins registry
+    match /admins/{adminId} {
+      allow get: if isSignedIn() && isValidId(adminId) && (request.auth.uid == adminId || isAdmin());
+      allow list: if false;
+      allow create: if isAdmin() && isValidId(adminId) && isValidAdminMember(incoming()) && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(adminId);
+    }
+
+    // Store Products Catalog
+    match /storeProducts/{productId} {
+      allow get: if isValidId(productId);
+      allow list: if resource.data.price >= 0;
+      allow create: if isAdmin() && isValidId(productId) && isValidStoreProduct(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() && isValidId(productId) && isValidStoreProduct(incoming()) && (
+        isAdmin() ||
+        (
+          // Action 1: Stock adjustment during checkout
+          incoming().diff(existing()).affectedKeys().hasOnly(['stockCount', 'updatedAt']) &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().stockCount == existing().stockCount - 1
+        ) ||
+        (
+          // Action 2: Rating aggregate update after buyer submits rating
+          incoming().diff(existing()).affectedKeys().hasOnly(['ratingAvg', 'ratingCount', 'updatedAt']) &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().ratingCount == existing().ratingCount + 1
+        )
+      );
+      allow delete: if isAdmin() && isValidId(productId);
+    }
+
+    // Store Stock Account Vault
+    match /storeStock/{stockId} {
+      allow get: if isVerifiedUser() && isValidId(stockId) && (
+        isAdmin() ||
+        resource.data.buyerUid == request.auth.uid ||
+        resource.data.status == 'available'
+      );
+      allow list: if isVerifiedUser() && (
+        isVerifiedAdminEmail() ||
+        resource.data.buyerUid == request.auth.uid ||
+        resource.data.status == 'available'
+      );
+      allow create: if isAdmin() && isValidId(stockId) && isValidStoreStockItem(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/storeProducts/$(incoming().productId));
+      allow update: if isVerifiedUser() && isValidId(stockId) && isValidStoreStockItem(incoming()) && (
+        isAdmin() ||
+        (
+          // Action: Claim available account stock during instant purchase
+          existing().status == 'available' &&
+          incoming().status == 'sold' &&
+          incoming().buyerUid == request.auth.uid &&
+          incoming().productId == existing().productId &&
+          incoming().productTitle == existing().productTitle &&
+          incoming().variantId == existing().variantId &&
+          incoming().variantLabel == existing().variantLabel &&
+          incoming().accountEmail == existing().accountEmail &&
+          incoming().accountPassword == existing().accountPassword &&
+          incoming().accountNotes == existing().accountNotes &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'buyerUid', 'orderId', 'updatedAt'])
+        )
+      );
+      allow delete: if isAdmin() && isValidId(stockId);
+    }
+
+    // Store Orders & Automatic Delivery Records
+    match /storeOrders/{orderId} {
+      allow get: if isVerifiedUser() && isValidId(orderId) && (
+        resource.data.buyerUid == request.auth.uid || isAdmin()
+      );
+      allow list: if isVerifiedUser() && (
+        resource.data.buyerUid == request.auth.uid || isVerifiedAdminEmail()
+      );
+      allow create: if isVerifiedUser() && isValidId(orderId) && isValidStoreOrder(incoming()) &&
+        incoming().buyerUid == request.auth.uid &&
+        incoming().status == 'paid' &&
+        incoming().rating == 0 &&
+        incoming().reviewComment == '' &&
+        incoming().refundReason == '' &&
+        incoming().refundRequestedAtMs == 0 &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/storeProducts/$(incoming().productId));
+      allow update: if isVerifiedUser() && isValidId(orderId) && isValidStoreOrder(incoming()) && (
+        isAdmin() ||
+        (
+          // Action 1: Buyer submits rating & review after purchase
+          existing().buyerUid == request.auth.uid &&
+          incoming().buyerUid == existing().buyerUid &&
+          existing().rating == 0 &&
+          incoming().rating >= 1 && incoming().rating <= 5 &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['rating', 'reviewComment', 'updatedAt'])
+        ) ||
+        (
+          // Action 2: Buyer requests refund after at least 10 minutes (600,000 ms) and within max 3 days (259,200,000 ms)
+          existing().buyerUid == request.auth.uid &&
+          incoming().buyerUid == existing().buyerUid &&
+          existing().status == 'paid' &&
+          incoming().status == 'refund_requested' &&
+          incoming().refundReason.size() >= 3 &&
+          (incoming().refundRequestedAtMs - existing().purchasedAtMs) >= 600000 &&
+          (incoming().refundRequestedAtMs - existing().purchasedAtMs) <= 259200000 &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'refundReason', 'refundRequestedAtMs', 'updatedAt'])
+        )
+      );
+      allow delete: if isAdmin() && isValidId(orderId);
+    }
+
+    // Store Refund Tickets & Admin-Initiated Chat
+    match /storeRefundTickets/{ticketId} {
+      allow get: if isVerifiedUser() && isValidId(ticketId) && (
+        resource.data.buyerUid == request.auth.uid || isAdmin()
+      );
+      allow list: if isVerifiedUser() && (
+        resource.data.buyerUid == request.auth.uid || isVerifiedAdminEmail()
+      );
+      allow create: if isVerifiedUser() && isValidId(ticketId) && isValidStoreRefundTicket(incoming()) &&
+        incoming().buyerUid == request.auth.uid &&
+        incoming().status == 'open' &&
+        incoming().canUserReply == false &&
+        incoming().messagesJson == '[]' &&
+        incoming().replacementCredentials == '' &&
+        incoming().proofImagesJson.size() >= 20 &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/storeOrders/$(incoming().orderId));
+      allow update: if isVerifiedUser() && isValidId(ticketId) && isValidStoreRefundTicket(incoming()) && (
+        isAdmin() ||
+        (
+          // Action: Buyer replies in ticket chat ONLY when ticket is open AND Admin has enabled replies (canUserReply == true)
+          existing().buyerUid == request.auth.uid &&
+          incoming().buyerUid == existing().buyerUid &&
+          existing().status == 'open' &&
+          incoming().status == 'open' &&
+          existing().canUserReply == true &&
+          incoming().canUserReply == true &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['messagesJson', 'updatedAt'])
+        )
+      );
+      allow delete: if isAdmin() && isValidId(ticketId);
+    }
+
+    // Store Product Reviews
+    match /storeReviews/{reviewId} {
+      allow get: if isValidId(reviewId);
+      allow list: if resource.data.rating >= 1;
+      allow create: if isVerifiedUser() && isValidId(reviewId) && isValidStoreReview(incoming()) &&
+        incoming().buyerUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        exists(/databases/$(database)/documents/storeProducts/$(incoming().productId)) &&
+        exists(/databases/$(database)/documents/storeOrders/$(incoming().orderId));
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(reviewId);
+    }
+
+    // Store Restock Notification Subscriptions
+    match /storeRestockAlerts/{alertId} {
+      allow get: if isVerifiedUser() && isValidId(alertId) && (
+        resource.data.userUid == request.auth.uid || isAdmin()
+      );
+      allow list: if isVerifiedUser() && (
+        resource.data.userUid == request.auth.uid || isVerifiedAdminEmail()
+      );
+      allow create: if isVerifiedUser() && isValidId(alertId) && isValidStoreRestockAlert(incoming()) &&
+        incoming().userUid == request.auth.uid &&
+        incoming().status == 'waiting' &&
+        incoming().notifiedAtMs == 0 &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/storeProducts/$(incoming().productId));
+      allow update: if isVerifiedUser() && isValidId(alertId) && isValidStoreRestockAlert(incoming()) && (
+        isAdmin() ||
+        (
+          existing().userUid == request.auth.uid &&
+          incoming().userUid == existing().userUid &&
+          existing().status == 'waiting' &&
+          incoming().status == 'notified' &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'notifiedAtMs', 'updatedAt'])
+        )
+      );
+      allow delete: if isVerifiedUser() && isValidId(alertId) && (
+        resource.data.userUid == request.auth.uid || isAdmin()
+      );
+    }
+  }
+}

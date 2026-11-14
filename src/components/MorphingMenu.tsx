@@ -13,6 +13,7 @@ interface Props {
   onOpenContact: () => void;
   onOpenStory: () => void;
   onOpenBio?: () => void;
+  onOpenStore?: () => void;
   onScrollTo: (id: string) => void;
   menuLabel: string;
 }
@@ -64,6 +65,7 @@ export const MorphingMenu: React.FC<Props> = ({
   onOpenContact,
   onOpenStory,
   onOpenBio,
+  onOpenStore,
   onScrollTo,
   menuLabel,
 }) => {
@@ -248,6 +250,22 @@ export const MorphingMenu: React.FC<Props> = ({
                       Work
                     </button>
                   </motion.div>
+
+                  {onOpenStore && (
+                    <motion.div variants={itemVariants}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNav(onOpenStore);
+                        }}
+                        onMouseEnter={() => uiSfx.playHover()}
+                        className="text-left text-[21px] sm:text-[23px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer w-full"
+                      >
+                        Store
+                      </button>
+                    </motion.div>
+                  )}
 
                   <motion.div variants={itemVariants}>
                     <button
