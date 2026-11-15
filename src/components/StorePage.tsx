@@ -2083,8 +2083,8 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
   }, [paymentTx]);
 
   return (
-    <div className="min-h-screen bg-[#fafafa] text-zinc-900 pt-24 sm:pt-28 pb-28 px-4 sm:px-8 lg:px-12">
-      <div className="max-w-[1440px] mx-auto space-y-6 sm:space-y-8">
+    <div className="min-h-screen bg-[#fafafa] text-zinc-900 pt-24 sm:pt-28 pb-28 px-4 sm:px-8 lg:px-12 overflow-x-clip">
+      <div className="max-w-[1440px] mx-auto space-y-5 sm:space-y-7">
         {/* ============================================================= */}
         {/* STORE HEADER CARD (Hidden on /produk/:nama-produk) */}
         {/* ============================================================= */}
@@ -2625,7 +2625,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                       {/* LEFT COLUMN: Product Summary Card + Benefit/Garansi/Deskripsi Tabs */}
                       <div className="lg:col-span-4 space-y-5">
                         {/* Card 1: Product Identity & Status */}
-                        <div className="bg-white border border-zinc-200 rounded-xl p-6 space-y-4">
+                        <div className="bg-white border border-zinc-200 rounded-xl p-5 sm:p-6 space-y-4">
                           <div className="w-14 h-14 rounded-xl bg-zinc-50 border border-zinc-200 flex items-center justify-center text-zinc-900">
                             <ProductBrandIcon
                               iconUrl={getProductIconUrl(activeProduct)}
@@ -2690,7 +2690,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                         </div>
 
                         {/* Card 2: Benefit / Garansi / Deskripsi Tabs */}
-                        <div className="bg-white border border-zinc-200 rounded-xl p-6 space-y-5">
+                        <div className="bg-white border border-zinc-200 rounded-xl p-5 sm:p-6 space-y-5">
                           <div className="flex items-center gap-5 border-b border-zinc-200 text-xs font-medium">
                             <button
                               type="button"
@@ -2815,7 +2815,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                       {/* RIGHT COLUMN: Step 1 (Pilih Varian) + Step 2 (Data Pembeli) + Tombol Beli */}
                       <div className="lg:col-span-8 space-y-5">
                         {/* Step 1: Pilih Nominal / Varian */}
-                        <div className="bg-white border border-zinc-200 rounded-xl p-6 space-y-5">
+                        <div className="bg-white border border-zinc-200 rounded-xl p-5 sm:p-6 space-y-5">
                           <div className="flex items-center gap-3 pb-4 border-b border-zinc-100">
                             <span className="w-6 h-6 rounded-full bg-zinc-950 text-white text-xs font-semibold flex items-center justify-center">
                               1
@@ -2931,9 +2931,9 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                         </div>
 
                         {/* Step 2: Masukkan Data Pembeli */}
-                        <div className="bg-white border border-zinc-200 rounded-xl p-6 space-y-5">
+                        <div className="bg-white border border-zinc-200 rounded-xl p-5 sm:p-6 space-y-5">
                           <div className="flex items-center gap-3 pb-4 border-b border-zinc-100">
-                            <span className="w-6 h-6 rounded-full bg-zinc-950 text-white text-xs font-semibold flex items-center justify-center">
+                            <span className="w-6 h-6 rounded-full bg-zinc-950 text-white text-xs font-semibold flex items-center justify-center shrink-0">
                               2
                             </span>
                             <h3 className="text-sm sm:text-base font-semibold text-zinc-950">
@@ -2951,9 +2951,9 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                                 value={buyerFullName}
                                 onChange={(e) => setBuyerFullName(e.target.value)}
                                 placeholder="Masukkan nama lengkap"
-                                className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-300 text-xs focus:outline-none focus:border-zinc-950"
+                                className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 bg-zinc-50/40 focus:bg-white text-xs focus:outline-none focus:border-zinc-950 transition-colors"
                               />
-                              <p className="text-[11px] text-zinc-400">
+                              <p className="text-[11px] text-zinc-400 leading-relaxed">
                                 Gunakan nama penerima pesanan agar transaksi mudah dikenali.
                               </p>
                             </div>
@@ -2967,9 +2967,9 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                                 value={buyerEmailInput}
                                 onChange={(e) => setBuyerEmailInput(e.target.value)}
                                 placeholder="pembeli@email.com"
-                                className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-300 text-xs focus:outline-none focus:border-zinc-950"
+                                className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 bg-zinc-50/40 focus:bg-white text-xs focus:outline-none focus:border-zinc-950 transition-colors"
                               />
-                              <p className="text-[11px] text-zinc-400">
+                              <p className="text-[11px] text-zinc-400 leading-relaxed">
                                 Invoice dan info akun dikirim otomatis ke halaman receipt.
                               </p>
                             </div>
@@ -2980,7 +2980,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                               No. WhatsApp (Opsional)
                             </label>
                             <div className="flex items-center gap-2">
-                              <div className="px-3.5 py-2.5 rounded-lg border border-zinc-300 bg-zinc-50 text-xs font-mono-code text-zinc-700 shrink-0">
+                              <div className="px-3.5 py-2.5 rounded-lg border border-zinc-200 bg-zinc-50 text-xs font-mono-code text-zinc-700 shrink-0">
                                 +62
                               </div>
                               <input
@@ -2988,50 +2988,57 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                                 value={buyerWhatsapp}
                                 onChange={(e) => setBuyerWhatsapp(e.target.value)}
                                 placeholder="8123456789"
-                                className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-300 text-xs focus:outline-none focus:border-zinc-950"
+                                className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-200 bg-zinc-50/40 focus:bg-white text-xs focus:outline-none focus:border-zinc-950 transition-colors"
                               />
                             </div>
-                            <p className="text-[11px] text-zinc-400">
+                            <p className="text-[11px] text-zinc-400 leading-relaxed">
                               Dipakai untuk notifikasi pesanan dan bantuan jika ada kendala.
                             </p>
                           </div>
                         </div>
 
                         {/* Action Box: Selected Price & Beli Sekarang Button (Disabled if Out of Stock!) */}
-                        <div className="bg-white border border-zinc-200 rounded-xl p-6 space-y-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="text-xs text-zinc-500">
-                                Variasi dipilih:{' '}
-                                <span className="font-medium text-zinc-900">
-                                  {currentVar
-                                    ? `${currentVar.label} (${currentVar.durationLabel})`
-                                    : activeProduct.title}
-                                </span>
+                        <div className="bg-white border border-zinc-200 rounded-xl p-5 sm:p-6 space-y-5">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="min-w-0 space-y-1">
+                              <div className="text-[11px] font-mono-code text-zinc-400 lowercase">
+                                variasi dipilih
                               </div>
-                              <div className="text-[11px] font-mono-code text-zinc-400 mt-0.5">
+                              <div className="text-sm sm:text-base font-semibold text-zinc-950 leading-snug">
+                                {currentVar
+                                  ? `${currentVar.label} (${currentVar.durationLabel})`
+                                  : activeProduct.title}
+                              </div>
+                              <div
+                                className={`text-[11px] font-mono-code ${
+                                  selectedVarStock > 0 ? 'text-emerald-700' : 'text-red-600'
+                                }`}
+                              >
                                 Stok tersedia: {selectedVarStock}
                               </div>
                             </div>
-                            <div className="text-right">
-                              <div className="text-xs text-zinc-500">Harga Paket</div>
+
+                            <div className="sm:text-right border-t sm:border-t-0 pt-3 sm:pt-0 border-zinc-100 shrink-0">
+                              <div className="text-[11px] font-mono-code text-zinc-400 lowercase">
+                                harga paket
+                              </div>
                               {(() => {
                                 const curDisc = getVariantDiscountInfo(
                                   currentVar?.price ?? activeProduct.price,
                                   currentVar?.originalPrice
                                 );
                                 return (
-                                  <div className="flex items-baseline justify-end gap-2">
-                                    {curDisc.hasDiscount && (
-                                      <span className="text-xs text-zinc-400 line-through tabular-nums">
-                                        {formatRupiah(curDisc.originalPrice)}
-                                      </span>
-                                    )}
-                                    <span className="text-2xl font-bold text-zinc-950 tabular-nums">
+                                  <div className="flex flex-wrap items-center sm:justify-end gap-2 mt-1">
+                                    <span className="text-xl sm:text-2xl font-bold text-zinc-950 tabular-nums whitespace-nowrap">
                                       {formatRupiah(curDisc.finalPrice)}
                                     </span>
                                     {curDisc.hasDiscount && (
-                                      <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[11px] font-medium">
+                                      <span className="text-xs text-zinc-400 line-through tabular-nums whitespace-nowrap">
+                                        {formatRupiah(curDisc.originalPrice)}
+                                      </span>
+                                    )}
+                                    {curDisc.hasDiscount && (
+                                      <span className="px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-medium whitespace-nowrap">
                                         Hemat {curDisc.discountPercent}%
                                       </span>
                                     )}
@@ -3045,7 +3052,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                             type="button"
                             onClick={handleProceedToCart}
                             disabled={!isProductInStock}
-                            className={`w-full py-3.5 px-6 rounded-lg text-xs font-mono-code uppercase tracking-wider transition-colors ${
+                            className={`w-full py-3.5 px-5 rounded-lg text-xs font-mono-code uppercase tracking-wider transition-colors text-center ${
                               isProductInStock
                                 ? 'bg-zinc-950 hover:bg-zinc-800 text-white cursor-pointer'
                                 : 'bg-zinc-200 text-zinc-500 cursor-not-allowed'
@@ -3163,7 +3170,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                           </div>
 
                           {/* Per-10 Pagination Bar matching reference screenshot */}
-                          <div className="flex items-center justify-between pt-2 text-xs text-zinc-500">
+                          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-xs text-zinc-500">
                             <span>
                               {(productReviewPage - 1) * 10 + 1}–
                               {Math.min(productReviewPage * 10, productReviews.length)} dari{' '}
