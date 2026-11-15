@@ -86,6 +86,8 @@ import {
   createStorePromo,
   updateStorePromo,
   deleteStorePromo,
+  evaluatePromoEligibility,
+  getPromoConditionTags,
   addBatchStructuredStockRows,
   deleteAdminStockAccount,
   createWijayapayTransaction,
@@ -556,6 +558,11 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
   const [promoDiscountTypeForm, setPromoDiscountTypeForm] = useState<'percent' | 'fixed'>('percent');
   const [promoDiscountValueForm, setPromoDiscountValueForm] = useState<string>('10');
   const [promoMinPurchaseForm, setPromoMinPurchaseForm] = useState<string>('0');
+  const [promoWeekendOnlyForm, setPromoWeekendOnlyForm] = useState<boolean>(false);
+  const [promoNewUserOnlyForm, setPromoNewUserOnlyForm] = useState<boolean>(false);
+  const [promoNewUserWindowHoursForm, setPromoNewUserWindowHoursForm] = useState<string>('24');
+  const [promoAllowedPaymentMethodsForm, setPromoAllowedPaymentMethodsForm] = useState<string[]>([]);
+  const [promoAllowedProductIdsForm, setPromoAllowedProductIdsForm] = useState<string[]>([]);
   const [promoIsActiveForm, setPromoIsActiveForm] = useState<boolean>(true);
   const [isSavingPromo, setIsSavingPromo] = useState<boolean>(false);
   const [confirmDeletePromoId, setConfirmDeletePromoId] = useState<string | null>(null);
@@ -780,6 +787,19 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
     return productReviews.slice(startIdx, startIdx + 10);
   }, [productReviews, productReviewPage, totalProductReviewPages]);
 
+  const myOrders = useMemo(() => {
+    if (!currentUser) return [];
+    return orders.filter((o) => o.buyerUid === currentUser.uid);
+  }, [orders, currentUser]);
+
+  const productTitleById = useMemo(() => {
+    const map: Record<string, string> = {};
+    products.forEach((p) => {
+      map[p.id] = p.title;
+    });
+    return map;
+  }, [products]);
+
   // Active Promo Vouchers & Live Calculation for /cart
   const activeStorePromos = useMemo(
     () => storePromos.filter((p) => p.isActive),
@@ -795,19 +815,43 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
     );
   }, [appliedPromoCode, activeStorePromos]);
 
+  const activePromoEligibility = useMemo(() => {
+    if (!activePromoVoucher) return null;
+    const targetProduct = selectedProduct || activeProduct;
+    const basePrice = selectedVariant?.price ?? targetProduct?.price ?? 0;
+    return evaluatePromoEligibility({
+      promo: activePromoVoucher,
+      productId: targetProduct?.id,
+      basePrice,
+      paymentMethod: selectedPayment,
+      user: currentUser,
+      userOrderCount: myOrders.length,
+      nowMs,
+      productTitleById,
+    });
+  }, [
+    activePromoVoucher,
+    selectedProduct,
+    activeProduct,
+    selectedVariant,
+    selectedPayment,
+    currentUser,
+    myOrders.length,
+    nowMs,
+    productTitleById,
+  ]);
+
   const cartPricing = useMemo(() => {
     const basePrice = selectedVariant?.price ?? activeProduct?.price ?? 0;
     const varDiscount = getVariantDiscountInfo(basePrice, selectedVariant?.originalPrice);
     let promoDiscountAmount = 0;
-    if (activePromoVoucher && basePrice > 0) {
-      if (basePrice >= (activePromoVoucher.minPurchase || 0)) {
-        if (activePromoVoucher.discountType === 'percent') {
-          promoDiscountAmount = Math.round((basePrice * activePromoVoucher.discountValue) / 100);
-        } else {
-          promoDiscountAmount = Math.min(Math.max(0, basePrice - 1000), activePromoVoucher.discountValue);
-        }
-        promoDiscountAmount = Math.max(0, promoDiscountAmount);
+    if (activePromoVoucher && basePrice > 0 && activePromoEligibility?.eligible) {
+      if (activePromoVoucher.discountType === 'percent') {
+        promoDiscountAmount = Math.round((basePrice * activePromoVoucher.discountValue) / 100);
+      } else {
+        promoDiscountAmount = Math.min(Math.max(0, basePrice - 1000), activePromoVoucher.discountValue);
       }
+      promoDiscountAmount = Math.max(0, promoDiscountAmount);
     }
     const subtotal = Math.max(1000, basePrice - promoDiscountAmount);
     const estimatedFee =
@@ -823,11 +867,15 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
       productSavingsAmount: varDiscount.savingsAmount,
       productDiscountPercent: varDiscount.discountPercent,
       discountAmount: promoDiscountAmount,
+      promoIneligibleReason:
+        activePromoVoucher && activePromoEligibility && !activePromoEligibility.eligible
+          ? activePromoEligibility.reason || 'Syarat promo belum terpenuhi.'
+          : '',
       subtotal,
       estimatedFee,
       totalEstimate,
     };
-  }, [selectedVariant, activeProduct, activePromoVoucher, selectedPayment]);
+  }, [selectedVariant, activeProduct, activePromoVoucher, activePromoEligibility, selectedPayment]);
 
   const handleApplyPromoCode = (codeOverride?: string) => {
     uiSfx.playClick();
@@ -841,12 +889,20 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
       showToast('error', `Kode promo "${candidate}" tidak ditemukan atau sedang nonaktif.`);
       return;
     }
-    const currentBasePrice = selectedVariant?.price ?? activeProduct?.price ?? 0;
-    if (matched.minPurchase > 0 && currentBasePrice < matched.minPurchase) {
-      showToast(
-        'error',
-        `Kode promo ${matched.code} membutuhkan minimal pembelian ${formatRupiah(matched.minPurchase)}.`
-      );
+    const targetProduct = selectedProduct || activeProduct;
+    const currentBasePrice = selectedVariant?.price ?? targetProduct?.price ?? 0;
+    const eligibility = evaluatePromoEligibility({
+      promo: matched,
+      productId: targetProduct?.id,
+      basePrice: currentBasePrice,
+      paymentMethod: selectedPayment,
+      user: currentUser,
+      userOrderCount: myOrders.length,
+      nowMs,
+      productTitleById,
+    });
+    if (!eligibility.eligible) {
+      showToast('error', eligibility.reason || `Syarat kode promo ${matched.code} belum terpenuhi.`);
       return;
     }
     setPromoCodeInput(matched.code);
@@ -956,10 +1012,6 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
     });
   }, [adminMode, currentUser, variantCountsLoaded, variantStockCounts, products]);
 
-  const myOrders = useMemo(() => {
-    if (!currentUser) return [];
-    return orders.filter((o) => o.buyerUid === currentUser.uid);
-  }, [orders, currentUser]);
 
   const myTickets = useMemo(() => {
     if (!currentUser) return [];
@@ -1219,6 +1271,15 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
     if (!currentUser) {
       uiSfx.playClick();
       setLoginPromptAction('create_invoice');
+      return;
+    }
+
+    if (activePromoVoucher && activePromoEligibility && !activePromoEligibility.eligible) {
+      showToast(
+        'error',
+        activePromoEligibility.reason ||
+          `Voucher ${activePromoVoucher.code} tidak memenuhi syarat untuk pesanan ini. Hapus voucher terlebih dahulu.`
+      );
       return;
     }
 
@@ -2036,6 +2097,11 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
     setPromoDiscountTypeForm('percent');
     setPromoDiscountValueForm('10');
     setPromoMinPurchaseForm('0');
+    setPromoWeekendOnlyForm(false);
+    setPromoNewUserOnlyForm(false);
+    setPromoNewUserWindowHoursForm('24');
+    setPromoAllowedPaymentMethodsForm([]);
+    setPromoAllowedProductIdsForm([]);
     setPromoIsActiveForm(true);
     setConfirmDeletePromoId(null);
   };
@@ -2049,8 +2115,29 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
     setPromoDiscountTypeForm(promo.discountType);
     setPromoDiscountValueForm(String(promo.discountValue));
     setPromoMinPurchaseForm(String(promo.minPurchase || 0));
+    setPromoWeekendOnlyForm(Boolean(promo.weekendOnly));
+    setPromoNewUserOnlyForm(Boolean(promo.newUserOnly));
+    setPromoNewUserWindowHoursForm(String(promo.newUserWindowHours ?? 24));
+    setPromoAllowedPaymentMethodsForm(
+      Array.isArray(promo.allowedPaymentMethods) ? [...promo.allowedPaymentMethods] : []
+    );
+    setPromoAllowedProductIdsForm(
+      Array.isArray(promo.allowedProductIds) ? [...promo.allowedProductIds] : []
+    );
     setPromoIsActiveForm(promo.isActive);
     setConfirmDeletePromoId(null);
+  };
+
+  const handleTogglePromoPaymentMethod = (methodCode: string) => {
+    setPromoAllowedPaymentMethodsForm((prev) =>
+      prev.includes(methodCode) ? prev.filter((m) => m !== methodCode) : [...prev, methodCode]
+    );
+  };
+
+  const handleTogglePromoProduct = (productId: string) => {
+    setPromoAllowedProductIdsForm((prev) =>
+      prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]
+    );
   };
 
   const handleSavePromo = async (e: React.FormEvent) => {
@@ -2082,6 +2169,13 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
         discountType: promoDiscountTypeForm,
         discountValue: cleanVal,
         minPurchase: Math.max(0, Math.round(Number(promoMinPurchaseForm) || 0)),
+        weekendOnly: promoWeekendOnlyForm,
+        newUserOnly: promoNewUserOnlyForm,
+        newUserWindowHours: promoNewUserOnlyForm
+          ? Math.max(0, Math.min(8760, Math.round(Number(promoNewUserWindowHoursForm) || 0)))
+          : 0,
+        allowedPaymentMethods: promoAllowedPaymentMethodsForm,
+        allowedProductIds: promoAllowedProductIdsForm,
         isActive: promoIsActiveForm,
       };
       if (editingPromoId) {
@@ -2109,6 +2203,11 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
         discountType: promo.discountType,
         discountValue: promo.discountValue,
         minPurchase: promo.minPurchase,
+        weekendOnly: Boolean(promo.weekendOnly),
+        newUserOnly: Boolean(promo.newUserOnly),
+        newUserWindowHours: promo.newUserWindowHours ?? 0,
+        allowedPaymentMethods: promo.allowedPaymentMethods || [],
+        allowedProductIds: promo.allowedProductIds || [],
         isActive: !promo.isActive,
       });
       showToast(
@@ -2686,32 +2785,6 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                           </div>
                         </div>
 
-                        {/* Variations preview */}
-                        <div className="space-y-2 pt-3 border-t border-zinc-100">
-                          <div className="text-[11px] font-mono-code text-zinc-400 lowercase">
-                            pilihan variasi ({prodVariants.length}):
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {prodVariants.map((v) => {
-                              const vCount = getVariantAvailableCount(product, v.id);
-                              const vDisc = getVariantDiscountInfo(v.price, v.originalPrice);
-                              return (
-                                <span
-                                  key={v.id}
-                                  className="text-[11px] font-mono-code bg-zinc-50 border border-zinc-200/80 rounded-md px-2.5 py-1 text-zinc-700 tabular-nums"
-                                >
-                                  {v.label} ({v.durationLabel}) ·{' '}
-                                  {vDisc.hasDiscount && (
-                                    <span className="line-through text-zinc-400 mr-1">
-                                      {formatRupiah(vDisc.originalPrice)}
-                                    </span>
-                                  )}
-                                  {formatRupiah(v.price)} [{vCount}]
-                                </span>
-                              );
-                            })}
-                          </div>
-                        </div>
                       </div>
 
                       <div className="pt-4 border-t border-zinc-100 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
@@ -3832,18 +3905,41 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                               </button>
                             </div>
 
-                            {activePromoVoucher && (
-                              <div className="flex items-center justify-between px-3.5 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs">
-                                <span>
-                                  Voucher <strong>{activePromoVoucher.code}</strong> aktif ({activePromoVoucher.title})
-                                </span>
+                            {activePromoVoucher && activePromoEligibility && (
+                              <div
+                                className={`flex items-start justify-between gap-2 px-3.5 py-2.5 rounded-lg border text-xs ${
+                                  activePromoEligibility.eligible
+                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                    : 'bg-amber-50 border-amber-200 text-amber-800'
+                                }`}
+                              >
+                                <div className="space-y-1">
+                                  <div>
+                                    {activePromoEligibility.eligible ? (
+                                      <>
+                                        Voucher <strong>{activePromoVoucher.code}</strong> aktif ({activePromoVoucher.title})
+                                      </>
+                                    ) : (
+                                      <>
+                                        Voucher <strong>{activePromoVoucher.code}</strong> belum memenuhi syarat:{' '}
+                                        {activePromoEligibility.reason}
+                                      </>
+                                    )}
+                                  </div>
+                                  {activePromoEligibility.eligible &&
+                                    typeof activePromoEligibility.newUserRemainingHours === 'number' && (
+                                      <div className="text-[11px] font-mono-code text-emerald-700">
+                                        Khusus pengguna baru · Sisa waktu klaim: ~{activePromoEligibility.newUserRemainingHours} jam
+                                      </div>
+                                    )}
+                                </div>
                                 <button
                                   type="button"
                                   onClick={() => {
                                     setAppliedPromoCode('');
                                     setPromoCodeInput('');
                                   }}
-                                  className="text-emerald-900 underline text-[11px] cursor-pointer"
+                                  className="underline text-[11px] cursor-pointer shrink-0"
                                 >
                                   hapus
                                 </button>
@@ -3857,35 +3953,67 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                                     Belum ada kode promo aktif saat ini.
                                   </div>
                                 ) : (
-                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                                    {activeStorePromos.map((v) => (
-                                      <button
-                                        key={v.id}
-                                        type="button"
-                                        onClick={() => handleApplyPromoCode(v.code)}
-                                        className="p-3 rounded-lg border border-dashed border-zinc-300 hover:border-zinc-950 text-left bg-zinc-50/60 cursor-pointer space-y-1"
-                                      >
-                                        <div className="flex items-center justify-between gap-2">
-                                          <span className="text-xs font-mono-code font-bold text-zinc-950">
-                                            {v.code}
-                                          </span>
-                                          <span className="text-[11px] font-medium text-emerald-700">
-                                            {v.discountType === 'percent'
-                                              ? `${v.discountValue}%`
-                                              : formatRupiah(v.discountValue)}
-                                          </span>
-                                        </div>
-                                        <div className="text-[11px] font-medium text-zinc-800">
-                                          {v.title}
-                                        </div>
-                                        <div className="text-[10px] text-zinc-500 leading-snug">
-                                          {v.description}
-                                          {v.minPurchase > 0
-                                            ? ` (Min. ${formatRupiah(v.minPurchase)})`
-                                            : ''}
-                                        </div>
-                                      </button>
-                                    ))}
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                    {activeStorePromos.map((v) => {
+                                      const vCheck = evaluatePromoEligibility({
+                                        promo: v,
+                                        productId: cartProd.id,
+                                        basePrice: cartPricing.basePrice,
+                                        paymentMethod: selectedPayment,
+                                        user: currentUser,
+                                        userOrderCount: myOrders.length,
+                                        nowMs,
+                                        productTitleById,
+                                      });
+                                      return (
+                                        <button
+                                          key={v.id}
+                                          type="button"
+                                          onClick={() => handleApplyPromoCode(v.code)}
+                                          className={`p-3 rounded-lg border border-dashed text-left cursor-pointer space-y-1.5 transition-colors ${
+                                            vCheck.eligible
+                                              ? 'border-zinc-300 hover:border-zinc-950 bg-zinc-50/70'
+                                              : 'border-zinc-200 bg-zinc-50/40 opacity-75 hover:border-zinc-400'
+                                          }`}
+                                        >
+                                          <div className="flex items-center justify-between gap-2">
+                                            <span className="text-xs font-mono-code font-bold text-zinc-950">
+                                              {v.code}
+                                            </span>
+                                            <span className="text-[11px] font-medium text-emerald-700">
+                                              {v.discountType === 'percent'
+                                                ? `${v.discountValue}%`
+                                                : formatRupiah(v.discountValue)}
+                                            </span>
+                                          </div>
+                                          <div className="text-[11px] font-medium text-zinc-800">
+                                            {v.title}
+                                          </div>
+                                          {v.description && (
+                                            <div className="text-[10px] text-zinc-500 leading-snug">
+                                              {v.description}
+                                            </div>
+                                          )}
+                                          {vCheck.tags.length > 0 && (
+                                            <div className="flex flex-wrap gap-1 pt-0.5">
+                                              {vCheck.tags.map((tag) => (
+                                                <span
+                                                  key={tag}
+                                                  className="px-2 py-0.5 rounded bg-white border border-zinc-200 text-[10px] text-zinc-600"
+                                                >
+                                                  {tag}
+                                                </span>
+                                              ))}
+                                            </div>
+                                          )}
+                                          {!vCheck.eligible && vCheck.reason && (
+                                            <div className="text-[10px] text-amber-700 font-medium pt-0.5">
+                                              {vCheck.reason}
+                                            </div>
+                                          )}
+                                        </button>
+                                      );
+                                    })}
                                   </div>
                                 )}
                               </div>
@@ -7570,6 +7698,168 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                         />
                       </div>
 
+                      {/* Syarat & Ketentuan Promo */}
+                      <div className="p-4 rounded-xl border border-zinc-200 bg-zinc-50/60 space-y-4">
+                        <div className="text-xs font-semibold text-zinc-950">
+                          Syarat &amp; Batasan Promo (Opsional)
+                        </div>
+
+                        {/* 1. Khusus Weekend */}
+                        <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={promoWeekendOnlyForm}
+                            onChange={(e) => setPromoWeekendOnlyForm(e.target.checked)}
+                            className="w-4 h-4 mt-0.5 accent-zinc-950"
+                          />
+                          <div>
+                            <span className="text-zinc-800 font-medium block">
+                              Khusus Weekend (Sabtu &amp; Minggu)
+                            </span>
+                            <span className="text-[11px] text-zinc-500">
+                              Promo hanya bisa digunakan saat akhir pekan.
+                            </span>
+                          </div>
+                        </label>
+
+                        {/* 2. Khusus Pengguna Baru + Berlaku Selama X Jam */}
+                        <div className="space-y-2">
+                          <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={promoNewUserOnlyForm}
+                              onChange={(e) => setPromoNewUserOnlyForm(e.target.checked)}
+                              className="w-4 h-4 mt-0.5 accent-zinc-950"
+                            />
+                            <div>
+                              <span className="text-zinc-800 font-medium block">
+                                Khusus Pengguna Baru
+                              </span>
+                              <span className="text-[11px] text-zinc-500">
+                                Hanya berlaku bagi akun yang belum pernah bertransaksi.
+                              </span>
+                            </div>
+                          </label>
+
+                          {promoNewUserOnlyForm && (
+                            <div className="pl-6">
+                              <label className="block text-[11px] text-zinc-700 font-medium mb-1">
+                                Berlaku selama berapa jam sejak akun terdaftar (0 = tanpa batas jam)
+                              </label>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={8760}
+                                  value={promoNewUserWindowHoursForm}
+                                  onChange={(e) => setPromoNewUserWindowHoursForm(e.target.value)}
+                                  placeholder="24"
+                                  className="w-28 px-3 py-2 rounded-lg border border-zinc-300 bg-white focus:outline-none focus:border-zinc-950"
+                                />
+                                <span className="text-[11px] text-zinc-500 font-mono-code">
+                                  jam (contoh: 24, 48, 72)
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* 3. Metode Pembayaran Tertentu */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-medium text-zinc-800">
+                              Metode Pembayaran Tertentu
+                            </span>
+                            {promoAllowedPaymentMethodsForm.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setPromoAllowedPaymentMethodsForm([])}
+                                className="text-[11px] font-mono-code text-zinc-500 hover:text-zinc-950 underline cursor-pointer lowercase"
+                              >
+                                semua metode
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {WIJAYAPAY_PAYMENT_METHODS.map((pm) => {
+                              const picked = promoAllowedPaymentMethodsForm.includes(pm.id);
+                              return (
+                                <button
+                                  key={pm.id}
+                                  type="button"
+                                  onClick={() => handleTogglePromoPaymentMethod(pm.id)}
+                                  className={`px-3 py-1.5 rounded-lg text-[11px] font-mono-code border transition-colors cursor-pointer ${
+                                    picked
+                                      ? 'bg-zinc-950 text-white border-zinc-950'
+                                      : 'bg-white text-zinc-700 border-zinc-300 hover:border-zinc-500'
+                                  }`}
+                                >
+                                  {picked ? `✓ ${pm.shortLabel}` : pm.shortLabel}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <div className="text-[11px] text-zinc-500">
+                            {promoAllowedPaymentMethodsForm.length === 0
+                              ? 'Kosong = berlaku untuk semua metode pembayaran.'
+                              : `Hanya berlaku untuk: ${promoAllowedPaymentMethodsForm.join(', ')}`}
+                          </div>
+                        </div>
+
+                        {/* 4. Produk Tertentu */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-medium text-zinc-800">
+                              Berlaku Pada Produk Tertentu ({promoAllowedProductIdsForm.length} dipilih)
+                            </span>
+                            {promoAllowedProductIdsForm.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => setPromoAllowedProductIdsForm([])}
+                                className="text-[11px] font-mono-code text-zinc-500 hover:text-zinc-950 underline cursor-pointer lowercase"
+                              >
+                                semua produk
+                              </button>
+                            )}
+                          </div>
+                          {products.length === 0 ? (
+                            <div className="text-[11px] text-zinc-400">
+                              Belum ada produk di katalog.
+                            </div>
+                          ) : (
+                            <div className="max-h-36 overflow-y-auto border border-zinc-200 rounded-lg bg-white divide-y divide-zinc-100">
+                              {products.map((prod) => {
+                                const picked = promoAllowedProductIdsForm.includes(prod.id);
+                                return (
+                                  <label
+                                    key={prod.id}
+                                    className="flex items-center gap-2.5 px-3 py-2 cursor-pointer hover:bg-zinc-50 select-none"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={picked}
+                                      onChange={() => handleTogglePromoProduct(prod.id)}
+                                      className="w-3.5 h-3.5 accent-zinc-950"
+                                    />
+                                    <span className="text-[11px] text-zinc-800 font-medium truncate flex-1">
+                                      {prod.title}
+                                    </span>
+                                    <span className="text-[10px] font-mono-code text-zinc-400 shrink-0">
+                                      {prod.category}
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          )}
+                          <div className="text-[11px] text-zinc-500">
+                            {promoAllowedProductIdsForm.length === 0
+                              ? 'Kosong = berlaku untuk semua produk.'
+                              : `Dibatasi untuk ${promoAllowedProductIdsForm.length} produk terpilih.`}
+                          </div>
+                        </div>
+                      </div>
+
                       <div>
                         <label className="block text-zinc-700 font-medium mb-1">
                           Deskripsi Ketentuan Promo
@@ -7632,52 +7922,63 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                       </div>
                     ) : (
                       <div className="space-y-3.5">
-                        {storePromos.map((promo) => (
-                          <div
-                            key={promo.id}
-                            className={`p-5 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-                              editingPromoId === promo.id
-                                ? 'border-zinc-950 bg-zinc-50'
-                                : 'border-zinc-200 bg-white'
-                            }`}
-                          >
-                            <div className="space-y-1.5 min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="px-2.5 py-1 rounded-md bg-zinc-950 text-white font-mono-code text-xs font-semibold">
-                                  {promo.code}
-                                </span>
-                                <span className="px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 font-mono-code text-[11px] font-medium">
-                                  {promo.discountType === 'percent'
-                                    ? `Diskon ${promo.discountValue}%`
-                                    : `Potongan ${formatRupiah(promo.discountValue)}`}
-                                </span>
-                                <span
-                                  className={`text-[11px] font-mono-code ${
-                                    promo.isActive ? 'text-emerald-700' : 'text-zinc-400'
-                                  }`}
-                                >
-                                  {promo.isActive ? '● aktif' : '○ nonaktif'}
-                                </span>
+                        {storePromos.map((promo) => {
+                          const conditionTags = getPromoConditionTags(promo, productTitleById);
+                          return (
+                            <div
+                              key={promo.id}
+                              className={`p-5 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                                editingPromoId === promo.id
+                                  ? 'border-zinc-950 bg-zinc-50'
+                                  : 'border-zinc-200 bg-white'
+                              }`}
+                            >
+                              <div className="space-y-2 min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="px-2.5 py-1 rounded-md bg-zinc-950 text-white font-mono-code text-xs font-semibold">
+                                    {promo.code}
+                                  </span>
+                                  <span className="px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 font-mono-code text-[11px] font-medium">
+                                    {promo.discountType === 'percent'
+                                      ? `Diskon ${promo.discountValue}%`
+                                      : `Potongan ${formatRupiah(promo.discountValue)}`}
+                                  </span>
+                                  <span
+                                    className={`text-[11px] font-mono-code ${
+                                      promo.isActive ? 'text-emerald-700' : 'text-zinc-400'
+                                    }`}
+                                  >
+                                    {promo.isActive ? '● aktif' : '○ nonaktif'}
+                                  </span>
+                                </div>
+                                <div className="text-sm font-medium text-zinc-950">
+                                  {promo.title}
+                                </div>
+                                <p className="text-xs text-zinc-500 leading-relaxed">
+                                  {promo.description}
+                                </p>
+                                {conditionTags.length > 0 && (
+                                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                                    {conditionTags.map((tag) => (
+                                      <span
+                                        key={tag}
+                                        className="px-2.5 py-0.5 rounded-full bg-zinc-100 border border-zinc-200 text-[11px] text-zinc-700"
+                                      >
+                                        {tag}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
-                              <div className="text-sm font-medium text-zinc-950">
-                                {promo.title}
-                              </div>
-                              <p className="text-xs text-zinc-500 leading-relaxed">
-                                {promo.description}
-                                {promo.minPurchase > 0
-                                  ? ` · Minimal belanja ${formatRupiah(promo.minPurchase)}`
-                                  : ''}
-                              </p>
-                            </div>
 
-                            <div className="flex flex-wrap items-center gap-2 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => handleTogglePromoActive(promo)}
-                                className="px-3 py-1.5 rounded-lg border border-zinc-200 hover:border-zinc-950 text-xs font-mono-code text-zinc-700 cursor-pointer lowercase whitespace-nowrap"
-                              >
-                                {promo.isActive ? 'nonaktifkan' : 'aktifkan'}
-                              </button>
+                              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleTogglePromoActive(promo)}
+                                  className="px-3 py-1.5 rounded-lg border border-zinc-200 hover:border-zinc-950 text-xs font-mono-code text-zinc-700 cursor-pointer lowercase whitespace-nowrap"
+                                >
+                                  {promo.isActive ? 'nonaktifkan' : 'aktifkan'}
+                                </button>
                               <button
                                 type="button"
                                 onClick={() => handleStartEditPromo(promo)}
@@ -7712,9 +8013,10 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                                   hapus
                                 </button>
                               )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>

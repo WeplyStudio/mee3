@@ -703,6 +703,26 @@
           "type": "number",
           "description": "Minimum subtotal in IDR required to apply promo (0 for no minimum)"
         },
+        "weekendOnly": {
+          "type": "boolean",
+          "description": "When true, promo is only valid on Saturday and Sunday"
+        },
+        "newUserOnly": {
+          "type": "boolean",
+          "description": "When true, promo is only valid for first-time buyers with 0 prior orders"
+        },
+        "newUserWindowHours": {
+          "type": "number",
+          "description": "Maximum account age in hours for newUserOnly promos (0 for no hour limit)"
+        },
+        "allowedPaymentMethods": {
+          "type": "array",
+          "description": "List of eligible Wijayapay method codes (empty array means all payment methods)"
+        },
+        "allowedProductIds": {
+          "type": "array",
+          "description": "List of eligible product IDs (empty array means all products)"
+        },
         "isActive": {
           "type": "boolean",
           "description": "Whether the promo code can currently be applied by buyers"

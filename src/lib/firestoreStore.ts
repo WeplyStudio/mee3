@@ -695,9 +695,29 @@ export interface StorePromoRecord {
   discountType: 'percent' | 'fixed';
   discountValue: number;
   minPurchase: number;
+  weekendOnly?: boolean;
+  newUserOnly?: boolean;
+  newUserWindowHours?: number;
+  allowedPaymentMethods?: string[];
+  allowedProductIds?: string[];
   isActive: boolean;
   createdAt?: Timestamp | null;
   updatedAt?: Timestamp | null;
+}
+
+export interface PromoConditionInput {
+  weekendOnly?: boolean;
+  newUserOnly?: boolean;
+  newUserWindowHours?: number;
+  allowedPaymentMethods?: string[];
+  allowedProductIds?: string[];
+}
+
+export interface PromoEligibilityResult {
+  eligible: boolean;
+  reason?: string;
+  tags: string[];
+  newUserRemainingHours?: number;
 }
 
 export function getVariantDiscountInfo(
@@ -2714,15 +2734,222 @@ function normalizePromoCode(rawCode: string): string {
   return cleaned.slice(0, 32);
 }
 
-export async function createStorePromo(input: {
-  code: string;
-  title: string;
-  description: string;
-  discountType: 'percent' | 'fixed';
-  discountValue: number;
-  minPurchase: number;
-  isActive: boolean;
-}): Promise<StorePromoRecord> {
+const VALID_PROMO_PAYMENT_METHODS: WijayapayMethodCode[] = [
+  'QRIS',
+  'BCAVA',
+  'BNIVA',
+  'ALFAMART',
+  'INDOMARET',
+];
+
+function sanitizePromoConditions(input: PromoConditionInput): {
+  weekendOnly: boolean;
+  newUserOnly: boolean;
+  newUserWindowHours: number;
+  allowedPaymentMethods: WijayapayMethodCode[];
+  allowedProductIds: string[];
+} {
+  const weekendOnly = Boolean(input.weekendOnly);
+  const newUserOnly = Boolean(input.newUserOnly);
+  const rawHours = Math.round(Number(input.newUserWindowHours) || 0);
+  const newUserWindowHours = newUserOnly ? Math.max(0, Math.min(8760, rawHours)) : 0;
+  const allowedPaymentMethods = Array.from(
+    new Set(
+      (input.allowedPaymentMethods || []).filter((m): m is WijayapayMethodCode =>
+        VALID_PROMO_PAYMENT_METHODS.includes(m as WijayapayMethodCode)
+      )
+    )
+  ).slice(0, 10);
+  const allowedProductIds = Array.from(
+    new Set(
+      (input.allowedProductIds || [])
+        .map((id) => sanitizeId(String(id || '')))
+        .filter((id) => id.length >= 1 && id.length <= 128 && id !== 'item')
+    )
+  ).slice(0, 100);
+
+  return {
+    weekendOnly,
+    newUserOnly,
+    newUserWindowHours,
+    allowedPaymentMethods,
+    allowedProductIds,
+  };
+}
+
+export function getPromoConditionTags(
+  promo: StorePromoRecord,
+  productTitleById?: Record<string, string>
+): string[] {
+  const tags: string[] = [];
+  if ((promo.minPurchase || 0) > 0) {
+    tags.push(`Min. Rp ${promo.minPurchase.toLocaleString('id-ID')}`);
+  }
+  if (promo.weekendOnly) {
+    tags.push('Khusus Weekend (Sabtu–Minggu)');
+  }
+  if (promo.newUserOnly) {
+    if ((promo.newUserWindowHours || 0) > 0) {
+      tags.push(`Pengguna Baru (${promo.newUserWindowHours} jam)`);
+    } else {
+      tags.push('Khusus Pengguna Baru');
+    }
+  }
+  if (Array.isArray(promo.allowedPaymentMethods) && promo.allowedPaymentMethods.length > 0) {
+    const labels = promo.allowedPaymentMethods.map(
+      (code) =>
+        WIJAYAPAY_PAYMENT_METHODS.find((m) => m.id === code)?.shortLabel || code
+    );
+    tags.push(`Metode: ${labels.join(', ')}`);
+  }
+  if (Array.isArray(promo.allowedProductIds) && promo.allowedProductIds.length > 0) {
+    const names = promo.allowedProductIds.map(
+      (pid) => productTitleById?.[pid] || pid
+    );
+    if (names.length <= 2) {
+      tags.push(`Produk: ${names.join(', ')}`);
+    } else {
+      tags.push(`Produk: ${names.slice(0, 2).join(', ')} +${names.length - 2} lainnya`);
+    }
+  }
+  return tags;
+}
+
+export function evaluatePromoEligibility(params: {
+  promo: StorePromoRecord;
+  productId?: string;
+  basePrice: number;
+  paymentMethod: string;
+  user: User | null;
+  userOrderCount: number;
+  nowMs?: number;
+  productTitleById?: Record<string, string>;
+}): PromoEligibilityResult {
+  const {
+    promo,
+    productId,
+    basePrice,
+    paymentMethod,
+    user,
+    userOrderCount,
+    nowMs = Date.now(),
+    productTitleById,
+  } = params;
+  const tags = getPromoConditionTags(promo, productTitleById);
+
+  if (!promo.isActive) {
+    return {
+      eligible: false,
+      reason: `Kode promo ${promo.code} sedang nonaktif.`,
+      tags,
+    };
+  }
+
+  if ((promo.minPurchase || 0) > 0 && basePrice < promo.minPurchase) {
+    return {
+      eligible: false,
+      reason: `Minimal pembelian untuk ${promo.code} adalah Rp ${promo.minPurchase.toLocaleString('id-ID')}.`,
+      tags,
+    };
+  }
+
+  if (promo.weekendOnly) {
+    const day = new Date(nowMs).getDay(); // 0 = Minggu, 6 = Sabtu
+    if (day !== 0 && day !== 6) {
+      return {
+        eligible: false,
+        reason: `Kode promo ${promo.code} hanya berlaku saat weekend (Sabtu & Minggu).`,
+        tags,
+      };
+    }
+  }
+
+  let newUserRemainingHours: number | undefined;
+  if (promo.newUserOnly) {
+    if (!user) {
+      return {
+        eligible: false,
+        reason: `Kode promo ${promo.code} khusus pengguna baru. Silakan login Google terlebih dahulu.`,
+        tags,
+      };
+    }
+    if (userOrderCount > 0) {
+      return {
+        eligible: false,
+        reason: `Kode promo ${promo.code} hanya berlaku untuk pengguna baru (0 transaksi sebelumnya).`,
+        tags,
+      };
+    }
+    const windowHours = Math.max(0, Number(promo.newUserWindowHours) || 0);
+    if (windowHours > 0) {
+      const createdAtMs = user.metadata?.creationTime
+        ? Date.parse(user.metadata.creationTime)
+        : NaN;
+      if (!Number.isNaN(createdAtMs)) {
+        const windowMs = windowHours * 60 * 60 * 1000;
+        const elapsedMs = Math.max(0, nowMs - createdAtMs);
+        if (elapsedMs > windowMs) {
+          return {
+            eligible: false,
+            reason: `Masa berlaku promo pengguna baru ${promo.code} (${windowHours} jam sejak daftar) sudah berakhir untuk akun Anda.`,
+            tags,
+          };
+        }
+        newUserRemainingHours = Math.max(1, Math.ceil((windowMs - elapsedMs) / (60 * 60 * 1000)));
+      }
+    }
+  }
+
+  if (Array.isArray(promo.allowedPaymentMethods) && promo.allowedPaymentMethods.length > 0) {
+    if (!promo.allowedPaymentMethods.includes(paymentMethod)) {
+      const allowedNames = promo.allowedPaymentMethods.map(
+        (code) => WIJAYAPAY_PAYMENT_METHODS.find((m) => m.id === code)?.shortLabel || code
+      );
+      return {
+        eligible: false,
+        reason: `Kode promo ${promo.code} hanya berlaku untuk metode pembayaran: ${allowedNames.join(', ')}.`,
+        tags,
+        newUserRemainingHours,
+      };
+    }
+  }
+
+  if (Array.isArray(promo.allowedProductIds) && promo.allowedProductIds.length > 0) {
+    if (!productId || !promo.allowedProductIds.includes(productId)) {
+      const targetNames = promo.allowedProductIds
+        .map((pid) => productTitleById?.[pid] || pid)
+        .slice(0, 3);
+      return {
+        eligible: false,
+        reason: `Kode promo ${promo.code} hanya berlaku untuk produk: ${targetNames.join(', ')}${
+          promo.allowedProductIds.length > 3
+            ? ` (+${promo.allowedProductIds.length - 3} lainnya)`
+            : ''
+        }.`,
+        tags,
+        newUserRemainingHours,
+      };
+    }
+  }
+
+  return {
+    eligible: true,
+    tags,
+    newUserRemainingHours,
+  };
+}
+
+export async function createStorePromo(
+  input: {
+    code: string;
+    title: string;
+    description: string;
+    discountType: 'percent' | 'fixed';
+    discountValue: number;
+    minPurchase: number;
+    isActive: boolean;
+  } & PromoConditionInput
+): Promise<StorePromoRecord> {
   const cleanCode = normalizePromoCode(input.code);
   if (cleanCode.length < 2) {
     throw new Error('Kode promo minimal 2 karakter (huruf/angka tanpa spasi).');
@@ -2738,6 +2965,7 @@ export async function createStorePromo(input: {
       ? Math.max(1, Math.min(100, rawVal))
       : Math.max(1, Math.min(100000000, rawVal));
   const cleanMin = Math.max(0, Math.min(100000000, Math.round(Number(input.minPurchase) || 0)));
+  const conditions = sanitizePromoConditions(input);
 
   const payload = {
     code: cleanCode,
@@ -2750,6 +2978,11 @@ export async function createStorePromo(input: {
     discountType: cleanType as 'percent' | 'fixed',
     discountValue: cleanVal,
     minPurchase: cleanMin,
+    weekendOnly: conditions.weekendOnly,
+    newUserOnly: conditions.newUserOnly,
+    newUserWindowHours: conditions.newUserWindowHours,
+    allowedPaymentMethods: conditions.allowedPaymentMethods,
+    allowedProductIds: conditions.allowedProductIds,
     isActive: Boolean(input.isActive),
   };
 
@@ -2780,7 +3013,7 @@ export async function updateStorePromo(
     discountValue: number;
     minPurchase: number;
     isActive: boolean;
-  }
+  } & PromoConditionInput
 ): Promise<StorePromoRecord> {
   const cleanId = sanitizeId(promoId);
   const path = `storePromos/${cleanId}`;
@@ -2796,6 +3029,7 @@ export async function updateStorePromo(
       ? Math.max(1, Math.min(100, rawVal))
       : Math.max(1, Math.min(100000000, rawVal));
   const cleanMin = Math.max(0, Math.min(100000000, Math.round(Number(input.minPurchase) || 0)));
+  const conditions = sanitizePromoConditions(input);
 
   const payload = {
     code: cleanCode,
@@ -2808,6 +3042,11 @@ export async function updateStorePromo(
     discountType: cleanType as 'percent' | 'fixed',
     discountValue: cleanVal,
     minPurchase: cleanMin,
+    weekendOnly: conditions.weekendOnly,
+    newUserOnly: conditions.newUserOnly,
+    newUserWindowHours: conditions.newUserWindowHours,
+    allowedPaymentMethods: conditions.allowedPaymentMethods,
+    allowedProductIds: conditions.allowedProductIds,
     isActive: Boolean(input.isActive),
   };
 

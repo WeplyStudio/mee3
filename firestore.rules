@@ -379,6 +379,11 @@ service cloud.firestore {
           'discountType',
           'discountValue',
           'minPurchase',
+          'weekendOnly',
+          'newUserOnly',
+          'newUserWindowHours',
+          'allowedPaymentMethods',
+          'allowedProductIds',
           'isActive',
           'createdAt',
           'updatedAt'
@@ -392,6 +397,23 @@ service cloud.firestore {
           (data.discountType == 'fixed' && data.discountValue <= 100000000)
         ) &&
         data.minPurchase is number && data.minPurchase >= 0 && data.minPurchase <= 100000000 &&
+        (!('weekendOnly' in data) || data.weekendOnly is bool) &&
+        (!('newUserOnly' in data) || data.newUserOnly is bool) &&
+        (!('newUserWindowHours' in data) || (data.newUserWindowHours is number && data.newUserWindowHours >= 0 && data.newUserWindowHours <= 8760)) &&
+        (!('allowedPaymentMethods' in data) || (
+          data.allowedPaymentMethods is list &&
+          data.allowedPaymentMethods.size() <= 10 &&
+          data.allowedPaymentMethods.hasOnly(['QRIS', 'BCAVA', 'BNIVA', 'ALFAMART', 'INDOMARET'])
+        )) &&
+        (!('allowedProductIds' in data) || (
+          data.allowedProductIds is list &&
+          data.allowedProductIds.size() <= 100 &&
+          (data.allowedProductIds.size() == 0 || (
+            data.allowedProductIds[0] is string &&
+            data.allowedProductIds[0].size() >= 1 &&
+            data.allowedProductIds[0].size() <= 128
+          ))
+        )) &&
         data.isActive is bool &&
         data.createdAt is timestamp &&
         data.updatedAt is timestamp;
