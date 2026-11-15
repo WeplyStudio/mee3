@@ -20,6 +20,7 @@ import {
   onSnapshot,
   query,
   where,
+  runTransaction,
   serverTimestamp,
   Timestamp,
 } from 'firebase/firestore';
@@ -2068,7 +2069,7 @@ export async function checkWijayapayTransactionStatus(refId: string): Promise<{
   };
 }
 
-// Customer: Complete Payment -> Automatic Credential Delivery + Usage Guide
+// Customer: Complete Payment -> Atomic 1-Stock Decrement + Credential Delivery + Order Creation
 export async function purchaseProductAutomatically(input: {
   product: StoreProductRecord;
   variant: ProductVariantOption;
@@ -2080,8 +2081,8 @@ export async function purchaseProductAutomatically(input: {
   const stockQueryPath = 'storeStock';
   const cleanVariantId = sanitizeId(variant.id);
 
-  let availableDocs;
-  let allUsableDocs: any[] = [];
+  let availableDocs: any[] = [];
+  const prePurchasePerVariant: Record<string, number> = {};
   try {
     const q = query(
       collection(db, 'storeStock'),
@@ -2093,7 +2094,14 @@ export async function purchaseProductAutomatically(input: {
       const rem = d.data().remainingUses;
       return typeof rem === 'number' ? rem > 0 : true;
     });
-    allUsableDocs = usableDocs;
+    usableDocs.forEach((d) => {
+      const raw = d.data() as any;
+      const units =
+        typeof raw.remainingUses === 'number' ? Math.max(0, Math.round(raw.remainingUses)) : 1;
+      if (units <= 0) return;
+      const vKey = sanitizeId(String(raw.variantId || 'var_reguler'));
+      prePurchasePerVariant[vKey] = (prePurchasePerVariant[vKey] || 0) + units;
+    });
     const prodVariants = getVariantsForProduct(product);
     const exactVariantDocs = usableDocs.filter(
       (d) => sanitizeId(String(d.data().variantId || '')) === cleanVariantId
@@ -2114,157 +2122,200 @@ export async function purchaseProductAutomatically(input: {
     );
   }
 
-  const chosenStockDoc = availableDocs[0];
-  const stockData = chosenStockDoc.data() as Omit<StoreStockItemRecord, 'id'>;
-  const stockId = chosenStockDoc.id;
-  const orderId = sanitizeId(`ord_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`);
+  const orderId = sanitizeId(
+    `ord_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`
+  );
   const invoiceCode =
     wijayapayData?.ref_id ||
     `INV-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${orderId.slice(-5).toUpperCase()}`;
   const trxReference =
     wijayapayData?.trx_reference || `TRX${Math.floor(100000 + Math.random() * 900000)}`;
   const nowMs = Date.now();
-  const currentUses =
-    typeof stockData.remainingUses === 'number'
-      ? Math.max(1, Math.round(stockData.remainingUses))
-      : 1;
+  const prodRef = doc(db, 'storeProducts', product.id);
+  const orderRef = doc(db, 'storeOrders', orderId);
 
-  try {
-    if (currentUses > 1) {
-      await updateDoc(doc(db, 'storeStock', stockId), {
-        remainingUses: currentUses - 1,
-        updatedAt: serverTimestamp(),
+  let createdOrderResult: StoreOrderRecord | null = null;
+  let lastError: unknown = null;
+
+  for (const candidateStockDoc of availableDocs) {
+    const stockId = candidateStockDoc.id;
+    const stockRef = doc(db, 'storeStock', stockId);
+
+    try {
+      createdOrderResult = await runTransaction(db, async (transaction) => {
+        // 1. Perform all transactional reads before any writes
+        const liveStockSnap = await transaction.get(stockRef);
+        const liveProdSnap = await transaction.get(prodRef);
+
+        if (!liveStockSnap.exists()) {
+          throw new Error('STOCK_CLAIMED');
+        }
+        const liveStockData = liveStockSnap.data() as Omit<StoreStockItemRecord, 'id'>;
+        if (liveStockData.status !== 'available') {
+          throw new Error('STOCK_CLAIMED');
+        }
+
+        const hasRemainingUsesField = typeof liveStockData.remainingUses === 'number';
+        const currentUses = hasRemainingUsesField
+          ? Math.max(0, Math.round(liveStockData.remainingUses!))
+          : 1;
+        if (currentUses <= 0) {
+          throw new Error('STOCK_CLAIMED');
+        }
+
+        if (!liveProdSnap.exists()) {
+          throw new Error('Produk tidak ditemukan di database.');
+        }
+
+        const pData = liveProdSnap.data() as any;
+        const freshUsageGuide = String(pData.usageGuide || product.usageGuide || '');
+        const existingCount = Math.max(0, Math.round(Number(pData.stockCount ?? 0)));
+        const existingSold = Math.max(0, Math.round(Number(pData.soldCount || 0)));
+        const nextProductStockCount = existingCount >= 1 ? existingCount - 1 : 0;
+        const nextSoldCount = Math.min(100000000, existingSold + 1);
+
+        const parsedVars = getVariantsForProduct({
+          id: product.id,
+          variantsJson: pData.variantsJson,
+          durationLabel: String(pData.durationLabel || product.durationLabel || '30 Hari'),
+          price: Number(pData.price ?? product.price ?? 0),
+        });
+        const delivType =
+          parsedVars[0]?.deliveryType === 'link'
+            ? 'link'
+            : parsedVars[0]?.deliveryType === 'redeem'
+            ? 'redeem'
+            : 'account';
+        const existingIcon = parsedVars.find((v) => v.iconUrl)?.iconUrl || '';
+        const existingBenefits = parsedVars.find((v) => v.benefitsText)?.benefitsText || '';
+        const existingFaqs = parsedVars.find((v) => v.faqs && v.faqs.length > 0)?.faqs;
+
+        const updatedVars = parsedVars.map((v) => {
+          const vKey = sanitizeId(v.id);
+          if (parsedVars.length <= 1) {
+            const singleCount =
+              typeof v.stockCount === 'number'
+                ? Math.max(0, Math.round(v.stockCount) - 1)
+                : nextProductStockCount;
+            return { ...v, stockCount: Math.min(1000000, Math.max(0, singleCount)) };
+          }
+          if (vKey === cleanVariantId) {
+            const varCurrent =
+              typeof v.stockCount === 'number'
+                ? Math.max(0, Math.round(v.stockCount))
+                : prePurchasePerVariant[vKey] || 0;
+            return { ...v, stockCount: Math.min(1000000, Math.max(0, varCurrent - 1)) };
+          }
+          const preservedCount =
+            typeof v.stockCount === 'number'
+              ? Math.max(0, Math.round(v.stockCount))
+              : prePurchasePerVariant[vKey] || 0;
+          return { ...v, stockCount: Math.min(1000000, preservedCount) };
+        });
+
+        const nextVariantsJson = serializeVariants(
+          updatedVars,
+          delivType,
+          existingIcon,
+          existingBenefits,
+          existingFaqs
+        );
+
+        const finalTitle = `${product.title} — ${variant.label}`;
+        const finalDuration = variant.durationLabel || product.durationLabel;
+        const finalPrice = wijayapayData?.total_bayar ?? variant.price ?? product.price;
+        const prodDelivType = getProductDeliveryType(product);
+        const isLinkDelivery =
+          prodDelivType === 'link' || /^https?:\/\//i.test(liveStockData.accountEmail || '');
+
+        const newOrderPayload = {
+          invoiceCode: clampString(invoiceCode, 60),
+          trxReference: clampString(trxReference, 60),
+          productId: sanitizeId(product.id),
+          productTitle: clampString(finalTitle, 120),
+          variantId: cleanVariantId,
+          variantLabel: clampString(variant.label, 120),
+          durationLabel: clampString(finalDuration, 60),
+          price: Math.max(0, Math.round(finalPrice)),
+          paymentMethod: clampString(String(paymentMethod), 60, 'QRIS'),
+          status: 'paid' as const,
+          stockId: sanitizeId(stockId),
+          deliveredEmail: clampString(liveStockData.accountEmail, 500),
+          deliveredPassword: clampString(liveStockData.accountPassword, 180),
+          deliveredNotes: clampString(liveStockData.accountNotes || '', 300),
+          usageGuide: clampString(
+            freshUsageGuide,
+            2500,
+            liveStockData.accountPassword
+              ? 'Silakan login menggunakan email dan password akun di atas.'
+              : isLinkDelivery
+              ? 'Silakan klik tombol Buka Link atau salin tautan undangan di atas untuk menerima akses produk.'
+              : 'Silakan tukarkan (redeem) kode voucher di atas pada aplikasi/website resmi.'
+          ),
+          buyerUid: sanitizeId(buyer.uid),
+          buyerEmail: clampString(buyer.email || 'user@jayss.id', 180),
+          buyerName: clampString(buyer.displayName || buyer.email?.split('@')[0] || 'Pembeli', 100),
+          purchasedAtMs: nowMs,
+          rating: 0,
+          reviewComment: '',
+          refundReason: '',
+          refundRequestedAtMs: 0,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+
+        // 2. Atomic Writes: decrement 1 stock unit, decrement 1 product stock & increment 1 sold, create 1 order
+        if (currentUses > 1) {
+          transaction.update(stockRef, {
+            remainingUses: currentUses - 1,
+            updatedAt: serverTimestamp(),
+          });
+        } else {
+          transaction.update(stockRef, {
+            status: 'sold',
+            buyerUid: buyer.uid,
+            orderId,
+            ...(hasRemainingUsesField ? { remainingUses: 0 } : {}),
+            updatedAt: serverTimestamp(),
+          });
+        }
+
+        transaction.update(prodRef, {
+          stockCount: nextProductStockCount,
+          soldCount: nextSoldCount,
+          ...(nextVariantsJson.length <= 8000 ? { variantsJson: nextVariantsJson } : {}),
+          updatedAt: serverTimestamp(),
+        });
+
+        transaction.set(orderRef, newOrderPayload);
+
+        return {
+          id: orderId,
+          ...newOrderPayload,
+          createdAt: null,
+          updatedAt: null,
+        };
       });
-    } else {
-      await updateDoc(doc(db, 'storeStock', stockId), {
-        status: 'sold',
-        buyerUid: buyer.uid,
-        orderId,
-        ...(typeof stockData.remainingUses === 'number' ? { remainingUses: 0 } : {}),
-        updatedAt: serverTimestamp(),
-      });
+
+      if (createdOrderResult) {
+        return createdOrderResult;
+      }
+    } catch (error: any) {
+      if (error?.message === 'STOCK_CLAIMED') {
+        lastError = error;
+        continue;
+      }
+      handleFirestoreError(error, OperationType.WRITE, `storeOrders/${orderId}`);
     }
-  } catch (error) {
-    handleFirestoreError(error, OperationType.UPDATE, `storeStock/${stockId}`);
   }
 
-  let freshUsageGuide = product.usageGuide || '';
-  try {
-    const freshProd = await getDoc(doc(db, 'storeProducts', product.id));
-    if (freshProd.exists()) {
-      const pData = freshProd.data();
-      freshUsageGuide = String(pData.usageGuide || product.usageGuide || '');
-      const existingCount = Math.max(0, Math.round(Number(pData.stockCount ?? 0)));
-      const existingSold = Math.max(0, Math.round(Number(pData.soldCount || 0)));
-
-      // Recompute exact post-purchase per-variant stockCount from live storeStock snapshot
-      const postPurchasePerVariant: Record<string, number> = {};
-      let postPurchaseTotal = 0;
-      allUsableDocs.forEach((d) => {
-        const raw = d.data() as any;
-        const rawUnits =
-          typeof raw.remainingUses === 'number' ? Math.max(0, Math.round(raw.remainingUses)) : 1;
-        const remainingAfter = d.id === stockId ? Math.max(0, rawUnits - 1) : rawUnits;
-        if (remainingAfter <= 0) return;
-        const vKey = sanitizeId(String(raw.variantId || 'var_reguler'));
-        postPurchasePerVariant[vKey] = (postPurchasePerVariant[vKey] || 0) + remainingAfter;
-        postPurchaseTotal += remainingAfter;
-      });
-
-      const parsedVars = getVariantsForProduct({
-        id: product.id,
-        variantsJson: pData.variantsJson,
-        durationLabel: String(pData.durationLabel || product.durationLabel || '30 Hari'),
-        price: Number(pData.price ?? product.price ?? 0),
-      });
-      const delivType =
-        parsedVars[0]?.deliveryType === 'link'
-          ? 'link'
-          : parsedVars[0]?.deliveryType === 'redeem'
-          ? 'redeem'
-          : 'account';
-      const existingIcon = parsedVars.find((v) => v.iconUrl)?.iconUrl || '';
-      const existingBenefits = parsedVars.find((v) => v.benefitsText)?.benefitsText || '';
-      const existingFaqs = parsedVars.find((v) => v.faqs && v.faqs.length > 0)?.faqs;
-      const updatedVars = parsedVars.map((v) => {
-        const vKey = sanitizeId(v.id);
-        const computedCount =
-          parsedVars.length <= 1 ? postPurchaseTotal : postPurchasePerVariant[vKey] || 0;
-        return { ...v, stockCount: Math.min(1000000, Math.max(0, computedCount)) };
-      });
-      const nextVariantsJson = serializeVariants(
-        updatedVars,
-        delivType,
-        existingIcon,
-        existingBenefits,
-        existingFaqs
-      );
-
-      await updateDoc(doc(db, 'storeProducts', product.id), {
-        stockCount: Math.max(0, existingCount - 1),
-        soldCount: Math.min(100000000, existingSold + 1),
-        ...(nextVariantsJson.length <= 8000 ? { variantsJson: nextVariantsJson } : {}),
-        updatedAt: serverTimestamp(),
-      });
-    }
-  } catch (error) {
-    handleFirestoreError(error, OperationType.UPDATE, `storeProducts/${product.id}`);
+  if (lastError) {
+    throw new Error(
+      `Maaf, stok terakhir untuk variasi "${variant.label}" baru saja dibeli pengguna lain. Silakan muat ulang stok.`
+    );
   }
 
-  const finalTitle = `${product.title} — ${variant.label}`;
-  const finalDuration = variant.durationLabel || product.durationLabel;
-  const finalPrice = wijayapayData?.total_bayar ?? variant.price ?? product.price;
-  const delivType = getProductDeliveryType(product);
-  const isLinkDelivery = delivType === 'link' || /^https?:\/\//i.test(stockData.accountEmail || '');
-
-  const newOrderPayload = {
-    invoiceCode: clampString(invoiceCode, 60),
-    trxReference: clampString(trxReference, 60),
-    productId: sanitizeId(product.id),
-    productTitle: clampString(finalTitle, 120),
-    variantId: cleanVariantId,
-    variantLabel: clampString(variant.label, 120),
-    durationLabel: clampString(finalDuration, 60),
-    price: Math.max(0, Math.round(finalPrice)),
-    paymentMethod: clampString(String(paymentMethod), 60, 'QRIS'),
-    status: 'paid' as const,
-    stockId: sanitizeId(stockId),
-    deliveredEmail: clampString(stockData.accountEmail, 500),
-    deliveredPassword: clampString(stockData.accountPassword, 180),
-    deliveredNotes: clampString(stockData.accountNotes || '', 300),
-    usageGuide: clampString(
-      freshUsageGuide,
-      2500,
-      stockData.accountPassword
-        ? 'Silakan login menggunakan email dan password akun di atas.'
-        : isLinkDelivery
-        ? 'Silakan klik tombol Buka Link atau salin tautan undangan di atas untuk menerima akses produk.'
-        : 'Silakan tukarkan (redeem) kode voucher di atas pada aplikasi/website resmi.'
-    ),
-    buyerUid: sanitizeId(buyer.uid),
-    buyerEmail: clampString(buyer.email || 'user@jayss.id', 180),
-    buyerName: clampString(buyer.displayName || buyer.email?.split('@')[0] || 'Pembeli', 100),
-    purchasedAtMs: nowMs,
-    rating: 0,
-    reviewComment: '',
-    refundReason: '',
-    refundRequestedAtMs: 0,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  };
-
-  try {
-    await setDoc(doc(db, 'storeOrders', orderId), newOrderPayload);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, `storeOrders/${orderId}`);
-  }
-
-  return {
-    id: orderId,
-    ...newOrderPayload,
-    createdAt: null,
-    updatedAt: null,
-  };
+  throw new Error('Gagal memproses transaksi stok produk.');
 }
 
 // Customer: Submit or Edit Rating & Review after purchase (capsules, toxic word censoring & A**s anonymous masking)

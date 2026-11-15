@@ -456,6 +456,8 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
   const [variantStockCounts, setVariantStockCounts] = useState<Record<string, number>>({});
   const [variantCountsLoaded, setVariantCountsLoaded] = useState<boolean>(false);
   const syncedProductStockRef = useRef<Set<string>>(new Set());
+  const deliveryInFlightRef = useRef<boolean>(false);
+  const deliveredRefIdsRef = useRef<Set<string>>(new Set());
   const [restockAlerts, setRestockAlerts] = useState<StoreRestockAlertRecord[]>([]);
   const [loadingProducts, setLoadingProducts] = useState<boolean>(true);
 
@@ -1288,6 +1290,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
 
   // 4. Deliver Purchased Account / Redeem Code / Link & Navigate to /receipt/:id-transaksi
   const deliverPurchasedItem = async (overrideUser?: User) => {
+    if (deliveryInFlightRef.current) return;
     const targetProd = selectedProduct || activeProduct;
     if (!targetProd || !selectedVariant) return;
     const validOverride =
@@ -1300,6 +1303,19 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
       return;
     }
 
+    const txRefId = paymentTx?.ref_id || '';
+    if (txRefId) {
+      const existingDeliveredOrder = orders.find((o) => o.invoiceCode === txRefId);
+      if (existingDeliveredOrder || deliveredRefIdsRef.current.has(txRefId)) {
+        if (existingDeliveredOrder) {
+          setPaymentTx(null);
+          navigateStorePath(`/receipt/${existingDeliveredOrder.id}`);
+        }
+        return;
+      }
+    }
+
+    deliveryInFlightRef.current = true;
     setIsCompletingPayment(true);
     try {
       const createdOrder = await purchaseProductAutomatically({
@@ -1309,6 +1325,9 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
         wijayapayData: paymentTx,
         buyer: activeUser,
       });
+      if (txRefId) {
+        deliveredRefIdsRef.current.add(txRefId);
+      }
       setPaymentTx(null);
       setCheckoutMode(false);
       setAppliedPromoCode('');
@@ -1326,6 +1345,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
     } catch (err: any) {
       showToast('error', err?.message || 'Gagal memproses pengiriman otomatis.');
     } finally {
+      deliveryInFlightRef.current = false;
       setIsCompletingPayment(false);
     }
   };
@@ -1361,7 +1381,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
 
   // Manual Check Payment Status on /pay/:id-transaksi
   const handleVerifyPaymentStatus = async () => {
-    if (!paymentTx) return;
+    if (!paymentTx || deliveryInFlightRef.current) return;
     setIsCompletingPayment(true);
     try {
       const statusRes = await checkWijayapayTransactionStatus(paymentTx.ref_id);
@@ -1376,7 +1396,9 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
     } catch (err: any) {
       showToast('error', err?.message || 'Gagal mengecek status pembayaran.');
     } finally {
-      setIsCompletingPayment(false);
+      if (!deliveryInFlightRef.current) {
+        setIsCompletingPayment(false);
+      }
     }
   };
 
@@ -1384,9 +1406,10 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
   useEffect(() => {
     if (!paymentTx || storeLocation.routePage !== 'pay' || isCompletingPayment) return;
     const interval = window.setInterval(async () => {
+      if (deliveryInFlightRef.current) return;
       try {
         const res = await checkWijayapayTransactionStatus(paymentTx.ref_id);
-        if (res.isPaid) {
+        if (res.isPaid && !deliveryInFlightRef.current) {
           window.clearInterval(interval);
           deliverPurchasedItem();
         }

@@ -1209,9 +1209,13 @@ export default function App() {
           onNavigateBio={() => {
             navigateTo('bio');
           }}
-          onNavigateStore={() => {
-            navigateTo('store');
-          }}
+          onNavigateStore={
+            currentPage === 'store'
+              ? () => {
+                  navigateTo('store');
+                }
+              : undefined
+          }
           onOpenContact={() => {
             navigateTo('contact');
           }}

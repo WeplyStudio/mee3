@@ -146,17 +146,7 @@ export const MorphingMenu: React.FC<Props> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isNameToggled, setIsNameToggled] = useState<boolean>(false);
   const [isNameHovered, setIsNameHovered] = useState<boolean>(false);
-  const [menuMode, setMenuMode] = useState<'folio' | 'store'>(() =>
-    isStoreActive ? 'store' : 'folio'
-  );
   const labels = MENU_LOCALE_LABELS[lang] || MENU_LOCALE_LABELS.en;
-
-  // Sync default menu tab to match active section when menu opens
-  useEffect(() => {
-    if (isOpen) {
-      setMenuMode(isStoreActive ? 'store' : 'folio');
-    }
-  }, [isOpen, isStoreActive]);
 
   // Close on Escape key
   useEffect(() => {
@@ -217,7 +207,7 @@ export const MorphingMenu: React.FC<Props> = ({
             isOpen
               ? {
                   width: 292,
-                  height: 368,
+                  height: 336,
                   borderRadius: 22,
                   backgroundColor: '#121213',
                   boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.95)',
@@ -300,49 +290,9 @@ export const MorphingMenu: React.FC<Props> = ({
                   </button>
                 </motion.div>
 
-                {/* Middle Block: Folio / Store Text Toggle above Home + Separated Navigation List */}
-                <div className="flex flex-col my-auto pl-1 space-y-3">
-                  {/* Text Toggle: Folio / Store */}
-                  <motion.div
-                    variants={itemVariants}
-                    className="flex items-center gap-2.5 text-[11px] font-mono-code tracking-tight pb-2 border-b border-white/10"
-                  >
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        uiSfx.playSwitch();
-                        setMenuMode('folio');
-                      }}
-                      onMouseEnter={() => uiSfx.playHover()}
-                      className={`cursor-pointer transition-colors whitespace-nowrap ${
-                        menuMode === 'folio'
-                          ? 'text-white font-semibold underline underline-offset-4'
-                          : 'text-zinc-500 hover:text-zinc-300'
-                      }`}
-                    >
-                      Folio
-                    </button>
-                    <span className="text-zinc-600 select-none" aria-hidden="true">/</span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        uiSfx.playSwitch();
-                        setMenuMode('store');
-                      }}
-                      onMouseEnter={() => uiSfx.playHover()}
-                      className={`cursor-pointer transition-colors whitespace-nowrap ${
-                        menuMode === 'store'
-                          ? 'text-white font-semibold underline underline-offset-4'
-                          : 'text-zinc-500 hover:text-zinc-300'
-                      }`}
-                    >
-                      Store
-                    </button>
-                  </motion.div>
-
-                  {menuMode === 'folio' ? (
+                {/* Middle Block: Standard Portfolio Navigation, or Store Navigation when in /store */}
+                <div className="flex flex-col my-auto pl-1">
+                  {!isStoreActive ? (
                     <nav className="flex flex-col space-y-2">
                       <motion.div variants={itemVariants}>
                         <button
