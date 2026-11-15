@@ -124,6 +124,7 @@ export interface ProductVariantOption {
   price: number;
   originalPrice?: number;
   deliveryType?: ProductDeliveryType;
+  stockCount?: number;
   iconUrl?: string;
   benefitsText?: string;
   faqs?: ProductFaqItem[];
@@ -562,6 +563,8 @@ export interface StoreOrderRecord {
   purchasedAtMs: number;
   rating: number;
   reviewComment: string;
+  reviewTagsJson?: string;
+  isAnonymous?: boolean;
   refundReason: string;
   refundRequestedAtMs: number;
   createdAt?: Timestamp | null;
@@ -597,9 +600,79 @@ export interface StoreReviewRecord {
   orderId: string;
   buyerUid: string;
   buyerName: string;
+  isAnonymous?: boolean;
   rating: number;
   comment: string;
+  reviewTagsJson?: string;
+  createdAtMs?: number;
   createdAt?: Timestamp | null;
+  updatedAt?: Timestamp | null;
+}
+
+export const LOW_RATING_REVIEW_CAPSULES = [
+  'Pelayanan lambat',
+  'Produk bermasalah',
+  'Penjual tidak ramah',
+] as const;
+
+export const HIGH_RATING_REVIEW_CAPSULES = [
+  'Pengiriman cepat',
+  'Produk sesuai',
+  'Respons penjual sangat cepat',
+] as const;
+
+export function getReviewCapsuleOptions(rating: number): string[] {
+  return rating <= 2 ? [...LOW_RATING_REVIEW_CAPSULES] : [...HIGH_RATING_REVIEW_CAPSULES];
+}
+
+export function serializeReviewTags(tags?: string[], rating?: number): string {
+  if (!Array.isArray(tags)) return '[]';
+  const allowed = typeof rating === 'number' ? getReviewCapsuleOptions(rating) : null;
+  const clean = Array.from(
+    new Set(
+      tags
+        .map((t) => String(t || '').trim())
+        .filter((t) => t.length > 0 && t.length <= 60 && (!allowed || allowed.includes(t)))
+    )
+  ).slice(0, 6);
+  return JSON.stringify(clean);
+}
+
+export function parseReviewTags(rawJson?: string): string[] {
+  if (!rawJson) return [];
+  try {
+    const parsed = JSON.parse(rawJson);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((x) => String(x || '').trim())
+      .filter((x) => x.length > 0 && x.length <= 60)
+      .slice(0, 6);
+  } catch {
+    return [];
+  }
+}
+
+export function maskAnonymousBuyerName(rawName: string): string {
+  const clean = (rawName || 'Pembeli').trim().slice(0, 100);
+  if (!clean) return 'A**m';
+  return clean
+    .split(/\s+/)
+    .map((part) => {
+      if (part.length <= 1) return '*';
+      if (part.length === 2) return `${part[0]}*`;
+      return `${part[0]}${'*'.repeat(part.length - 2)}${part[part.length - 1]}`;
+    })
+    .join(' ');
+}
+
+export function isAnonymousReviewRecord(rev: { buyerName: string; isAnonymous?: boolean }): boolean {
+  if (rev.isAnonymous) return true;
+  const trimmed = (rev.buyerName || '').trim();
+  return (
+    trimmed.length > 0 &&
+    (/^(\*+)(\s+\*+)*$/.test(trimmed) ||
+      /^[A-Za-z0-9]\*+[A-Za-z0-9]?(\s+[A-Za-z0-9]\*+[A-Za-z0-9]?)*$/.test(trimmed))
+  );
 }
 
 export interface StoreRestockAlertRecord {
@@ -843,6 +916,10 @@ export function serializeVariants(
     .map((v, idx) => {
       const cleanPrice = Math.max(0, Math.min(1000000000, Math.round(Number(v.price) || 0)));
       const cleanOrig = Math.max(0, Math.min(1000000000, Math.round(Number(v.originalPrice) || 0)));
+      const hasStockCount = typeof v.stockCount === 'number' && !Number.isNaN(v.stockCount);
+      const cleanVarStock = hasStockCount
+        ? Math.max(0, Math.min(1000000, Math.round(Number(v.stockCount) || 0)))
+        : undefined;
       return {
         id: sanitizeId(v.id || `var_${idx + 1}`),
         label: clampString(v.label, 80, `Variasi ${idx + 1}`),
@@ -850,6 +927,7 @@ export function serializeVariants(
         price: cleanPrice,
         ...(cleanOrig > cleanPrice ? { originalPrice: cleanOrig } : {}),
         deliveryType: v.deliveryType || deliveryType,
+        ...(typeof cleanVarStock === 'number' ? { stockCount: cleanVarStock } : {}),
         ...(idx === 0 && (cleanIcon || v.iconUrl)
           ? { iconUrl: cleanIcon || normalizeTheSvgIconUrl(v.iconUrl) }
           : {}),
@@ -908,6 +986,10 @@ export function getVariantsForProduct(product: {
           const cleanPrice = Math.max(0, Math.round(Number(v.price ?? product.price) || 0));
           const cleanOrig = Math.max(0, Math.round(Number(v.originalPrice || 0)));
           const parsedFaqs = Array.isArray(v.faqs) ? sanitizeFaqs(v.faqs) : undefined;
+          const parsedVarStock =
+            typeof v.stockCount === 'number' && !Number.isNaN(v.stockCount)
+              ? Math.max(0, Math.min(1000000, Math.round(Number(v.stockCount))))
+              : undefined;
           return {
             id: sanitizeId(String(v.id || `var_${idx + 1}`)),
             label: clampString(String(v.label || `Variasi ${idx + 1}`), 80, `Variasi ${idx + 1}`),
@@ -924,6 +1006,7 @@ export function getVariantsForProduct(product: {
                 : v.deliveryType === 'link'
                 ? 'link'
                 : 'account',
+            ...(typeof parsedVarStock === 'number' ? { stockCount: parsedVarStock } : {}),
             iconUrl: v.iconUrl ? normalizeTheSvgIconUrl(String(v.iconUrl)) : undefined,
             benefitsText: v.benefitsText ? String(v.benefitsText) : undefined,
             ...(parsedFaqs && parsedFaqs.length > 0 ? { faqs: parsedFaqs } : {}),
@@ -1128,6 +1211,9 @@ export function subscribeStoreReviews(
         return {
           id: d.id,
           ...raw,
+          reviewTagsJson: String(raw.reviewTagsJson || '[]'),
+          isAnonymous: Boolean(raw.isAnonymous),
+          createdAtMs: raw.createdAt?.toMillis?.() ?? 0,
           comment: censorToxicWords(String(raw.comment || '')),
         };
       });
@@ -1183,6 +1269,8 @@ export function subscribeUserOrders(
           purchasedAtMs: Number(raw.purchasedAtMs || 0),
           rating: Number(raw.rating || 0),
           reviewComment: censorToxicWords(String(raw.reviewComment || '')),
+          reviewTagsJson: String(raw.reviewTagsJson || '[]'),
+          isAnonymous: Boolean(raw.isAnonymous),
           refundReason: String(raw.refundReason || ''),
           refundRequestedAtMs: Number(raw.refundRequestedAtMs || 0),
           createdAt: raw.createdAt || null,
@@ -1294,7 +1382,7 @@ export function subscribeAdminStock(onData: (stock: StoreStockItemRecord[]) => v
 }
 
 export function subscribeAvailableStockByVariant(
-  onData: (countsByVariantKey: Record<string, number>) => void
+  onData: (countsByVariantKey: Record<string, number>, loadedFromServer?: boolean) => void
 ) {
   const path = 'storeStock';
   const q = query(collection(db, path), where('status', '==', 'available'));
@@ -1304,8 +1392,8 @@ export function subscribeAvailableStockByVariant(
       const counts: Record<string, number> = {};
       snapshot.docs.forEach((d) => {
         const raw = d.data() as any;
-        const prodId = String(raw.productId || '');
-        const varId = String(raw.variantId || 'var_reguler');
+        const prodId = sanitizeId(String(raw.productId || ''));
+        const varId = sanitizeId(String(raw.variantId || 'var_reguler'));
         if (!prodId || LEGACY_FAKE_PRODUCT_IDS.includes(prodId)) return;
         const units =
           typeof raw.remainingUses === 'number' ? Math.max(0, Math.round(raw.remainingUses)) : 1;
@@ -1314,10 +1402,10 @@ export function subscribeAvailableStockByVariant(
         counts[key] = (counts[key] || 0) + units;
         counts[`${prodId}__total`] = (counts[`${prodId}__total`] || 0) + units;
       });
-      onData(counts);
+      onData(counts, true);
     },
     () => {
-      onData({});
+      onData({}, false);
     }
   );
 }
@@ -1400,8 +1488,15 @@ export async function createStoreProduct(input: {
   const path = `storeProducts/${productId}`;
   const resolvedIcon = input.iconUrl || inferTheSvgIconFromTitle(input.title);
   const cleanFaqs = sanitizeFaqs(input.faqs);
+  const initialVariants: ProductVariantOption[] = (input.variants || []).map((v) => ({
+    ...v,
+    stockCount:
+      typeof v.stockCount === 'number' && !Number.isNaN(v.stockCount)
+        ? Math.max(0, Math.round(v.stockCount))
+        : 0,
+  }));
   const variantsJson = serializeVariants(
-    input.variants,
+    initialVariants,
     input.deliveryType,
     resolvedIcon,
     input.benefitsText || '',
@@ -1456,6 +1551,132 @@ export async function createStoreProduct(input: {
   }
 }
 
+// Internal helper: Recompute live per-variant & total available stock from storeStock
+async function computeProductLiveStockMap(cleanProductId: string): Promise<{
+  totalUnits: number;
+  perVariant: Record<string, number>;
+}> {
+  const perVariant: Record<string, number> = {};
+  let totalUnits = 0;
+  const stockSnap = await getDocs(
+    query(
+      collection(db, 'storeStock'),
+      where('productId', '==', cleanProductId),
+      where('status', '==', 'available')
+    )
+  );
+  stockSnap.docs.forEach((d) => {
+    const raw = d.data() as any;
+    const units =
+      typeof raw.remainingUses === 'number' ? Math.max(0, Math.round(raw.remainingUses)) : 1;
+    if (units <= 0) return;
+    const varKey = sanitizeId(String(raw.variantId || 'var_reguler'));
+    perVariant[varKey] = (perVariant[varKey] || 0) + units;
+    totalUnits += units;
+  });
+  return { totalUnits, perVariant };
+}
+
+// Exported helper: Sync public storeProducts stockCount & variantsJson per-variant stock from live storeStock
+export async function syncProductStockSnapshot(
+  productId: string,
+  existingDataOverride?: any
+): Promise<{ totalUnits: number; perVariant: Record<string, number> } | null> {
+  const cleanProductId = sanitizeId(productId);
+  const productPath = `storeProducts/${cleanProductId}`;
+  const prodRef = doc(db, 'storeProducts', cleanProductId);
+
+  try {
+    let existingData = existingDataOverride;
+    if (!existingData) {
+      const prodSnap = await getDoc(prodRef);
+      if (!prodSnap.exists()) return null;
+      existingData = prodSnap.data();
+    }
+
+    const { totalUnits, perVariant } = await computeProductLiveStockMap(cleanProductId);
+    const parsedVariants = getVariantsForProduct({
+      id: cleanProductId,
+      variantsJson: existingData.variantsJson,
+      durationLabel: String(existingData.durationLabel || '30 Hari'),
+      price: Number(existingData.price || 0),
+    });
+
+    const delivType =
+      parsedVariants[0]?.deliveryType === 'link'
+        ? 'link'
+        : parsedVariants[0]?.deliveryType === 'redeem'
+        ? 'redeem'
+        : 'account';
+    const existingIcon = parsedVariants.find((v) => v.iconUrl)?.iconUrl || '';
+    const existingBenefits = parsedVariants.find((v) => v.benefitsText)?.benefitsText || '';
+    const existingFaqs = parsedVariants.find((v) => v.faqs && v.faqs.length > 0)?.faqs;
+
+    const updatedVariants = parsedVariants.map((v) => {
+      const cleanVarId = sanitizeId(v.id);
+      const exactCount = perVariant[cleanVarId] || 0;
+      const singleVarFallback = parsedVariants.length <= 1 ? totalUnits : exactCount;
+      return {
+        ...v,
+        stockCount: Math.min(1000000, singleVarFallback),
+      };
+    });
+
+    const nextVariantsJson = serializeVariants(
+      updatedVariants,
+      delivType,
+      existingIcon,
+      existingBenefits,
+      existingFaqs
+    );
+
+    await updateDoc(prodRef, {
+      title: clampString(existingData.title, 120, 'Produk Digital'),
+      category: clampString(existingData.category, 60, 'Premium'),
+      description: clampString(existingData.description, 2000, 'Produk digital resmi bergaransi.'),
+      usageGuide: clampString(existingData.usageGuide || '', 2500, ''),
+      variantsJson: nextVariantsJson,
+      price: Math.max(0, Math.round(Number(existingData.price || 0))),
+      durationLabel: clampString(existingData.durationLabel, 60, '30 Hari'),
+      badge: clampString(existingData.badge || '', 40, ''),
+      ratingAvg: Math.max(0, Math.min(5, Number(existingData.ratingAvg ?? 5))),
+      ratingCount: Math.max(0, Math.round(Number(existingData.ratingCount || 0))),
+      createdAt: existingData.createdAt || serverTimestamp(),
+      stockCount: Math.min(1000000, totalUnits),
+      updatedAt: serverTimestamp(),
+    });
+
+    return { totalUnits, perVariant };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, productPath);
+  }
+}
+
+async function notifyWaitingRestockAlerts(cleanProductId: string): Promise<void> {
+  try {
+    const alertsSnap = await getDocs(
+      query(
+        collection(db, 'storeRestockAlerts'),
+        where('productId', '==', cleanProductId),
+        where('status', '==', 'waiting')
+      )
+    );
+    if (alertsSnap.empty) return;
+    const nowMs = Date.now();
+    await Promise.all(
+      alertsSnap.docs.map((alertDoc) =>
+        updateDoc(doc(db, 'storeRestockAlerts', alertDoc.id), {
+          status: 'notified',
+          notifiedAtMs: nowMs,
+          updatedAt: serverTimestamp(),
+        })
+      )
+    );
+  } catch (error) {
+    console.debug('Restock alert notification sync:', error);
+  }
+}
+
 // Admin: Edit / Update Existing Product, Variations, Delivery Type, Icon, Benefits, FAQs & Usage Guide
 export async function updateStoreProduct(
   productId: string,
@@ -1477,8 +1698,34 @@ export async function updateStoreProduct(
   const prodRef = doc(db, 'storeProducts', cleanId);
   const resolvedIcon = input.iconUrl || inferTheSvgIconFromTitle(input.title);
   const cleanFaqs = sanitizeFaqs(input.faqs);
+
+  let liveTotalUnits = 0;
+  let livePerVariant: Record<string, number> = {};
+  let hasLiveStockCount = false;
+  try {
+    const computed = await computeProductLiveStockMap(cleanId);
+    liveTotalUnits = computed.totalUnits;
+    livePerVariant = computed.perVariant;
+    hasLiveStockCount = true;
+  } catch {
+    hasLiveStockCount = false;
+  }
+
+  const variantsWithLiveStock: ProductVariantOption[] = (input.variants || []).map((v, idx) => {
+    const cleanVarId = sanitizeId(v.id || `var_${idx + 1}`);
+    const resolvedVarStock = hasLiveStockCount
+      ? livePerVariant[cleanVarId] || 0
+      : typeof v.stockCount === 'number'
+      ? Math.max(0, Math.round(v.stockCount))
+      : undefined;
+    return {
+      ...v,
+      ...(typeof resolvedVarStock === 'number' ? { stockCount: resolvedVarStock } : {}),
+    };
+  });
+
   const variantsJson = serializeVariants(
-    input.variants,
+    variantsWithLiveStock,
     input.deliveryType,
     resolvedIcon,
     input.benefitsText || '',
@@ -1494,6 +1741,9 @@ export async function updateStoreProduct(
     const snap = await getDoc(prodRef);
     if (snap.exists()) {
       const existingData = snap.data();
+      const finalStockCount = hasLiveStockCount
+        ? Math.max(0, Math.min(1000000, liveTotalUnits))
+        : Math.max(0, Math.min(1000000, Math.round(Number(existingData.stockCount) || 0)));
       const updatedFields = {
         title: clampString(input.title, 120, 'Produk Digital'),
         category: clampString(input.category, 60, 'Premium'),
@@ -1511,7 +1761,7 @@ export async function updateStoreProduct(
         price: Math.max(0, Math.min(1000000000, Math.round(Number(lowestVariant.price) || 0))),
         durationLabel: clampString(lowestVariant.durationLabel, 60, '30 Hari'),
         badge: clampString(input.badge, 40, ''),
-        stockCount: Math.max(0, Math.min(1000000, Math.round(Number(existingData.stockCount) || 0))),
+        stockCount: finalStockCount,
         ratingAvg: Math.max(0, Math.min(5, Number(existingData.ratingAvg ?? 5))),
         ratingCount: Math.max(0, Math.min(1000000, Math.round(Number(existingData.ratingCount) || 0))),
         soldCount: Math.max(0, Math.min(100000000, Math.round(Number(existingData.soldCount) || 0))),
@@ -1566,6 +1816,7 @@ export async function addAdminStockAccount(input: {
   accountPassword: string;
   accountNotes: string;
   remainingUses?: number;
+  skipProductSync?: boolean;
 }): Promise<void> {
   const cleanProductId = sanitizeId(input.product.id);
   const variants = getVariantsForProduct(input.product);
@@ -1582,16 +1833,16 @@ export async function addAdminStockAccount(input: {
   const productPath = `storeProducts/${cleanProductId}`;
   const prodRef = doc(db, 'storeProducts', cleanProductId);
 
-  let currentStock = 0;
   let existingData: any = null;
-  try {
-    const prodSnap = await getDoc(prodRef);
-    if (prodSnap.exists()) {
-      existingData = prodSnap.data();
-      currentStock = Number(existingData.stockCount || 0);
+  if (!input.skipProductSync) {
+    try {
+      const prodSnap = await getDoc(prodRef);
+      if (prodSnap.exists()) {
+        existingData = prodSnap.data();
+      }
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, productPath);
     }
-  } catch (error) {
-    handleFirestoreError(error, OperationType.GET, productPath);
   }
 
   try {
@@ -1614,52 +1865,9 @@ export async function addAdminStockAccount(input: {
     handleFirestoreError(error, OperationType.CREATE, stockPath);
   }
 
-  try {
-    await updateDoc(prodRef, {
-      title: clampString(existingData?.title || input.product.title, 120, 'Produk'),
-      category: clampString(existingData?.category || input.product.category, 60, 'Premium'),
-      description: clampString(existingData?.description || input.product.description, 2000, 'Deskripsi'),
-      usageGuide: clampString(existingData?.usageGuide || input.product.usageGuide || '', 2500, ''),
-      variantsJson:
-        existingData?.variantsJson || input.product.variantsJson || serializeVariants(variants),
-      price: Number(existingData?.price ?? input.product.price ?? 0),
-      durationLabel: clampString(
-        existingData?.durationLabel || input.product.durationLabel,
-        60,
-        '30 Hari'
-      ),
-      badge: clampString(existingData?.badge ?? input.product.badge ?? '', 40, ''),
-      ratingAvg: Number(existingData?.ratingAvg ?? input.product.ratingAvg ?? 5),
-      ratingCount: Number(existingData?.ratingCount ?? input.product.ratingCount ?? 0),
-      createdAt: existingData?.createdAt || serverTimestamp(),
-      stockCount: Math.min(1000000, currentStock + cleanRemainingUses),
-      updatedAt: serverTimestamp(),
-    });
-  } catch (error) {
-    handleFirestoreError(error, OperationType.UPDATE, productPath);
-  }
-
-  // Trigger automatic restock notifications for waiting subscribers of this product
-  try {
-    const alertsSnap = await getDocs(
-      query(
-        collection(db, 'storeRestockAlerts'),
-        where('productId', '==', cleanProductId),
-        where('status', '==', 'waiting')
-      )
-    );
-    const nowMs = Date.now();
-    await Promise.all(
-      alertsSnap.docs.map((alertDoc) =>
-        updateDoc(doc(db, 'storeRestockAlerts', alertDoc.id), {
-          status: 'notified',
-          notifiedAtMs: nowMs,
-          updatedAt: serverTimestamp(),
-        })
-      )
-    );
-  } catch (error) {
-    console.debug('Restock alert notification sync:', error);
+  if (!input.skipProductSync) {
+    await syncProductStockSnapshot(cleanProductId, existingData || undefined);
+    await notifyWaitingRestockAlerts(cleanProductId);
   }
 }
 
@@ -1672,6 +1880,7 @@ export async function addBatchStructuredStockRows(input: {
 }): Promise<{ docsAdded: number; unitsAdded: number }> {
   let docsAdded = 0;
   let unitsAdded = 0;
+  const cleanProductId = sanitizeId(input.product.id);
   for (const row of input.rows) {
     const mainVal = (row.accountEmail || '').trim();
     const passVal = input.deliveryType === 'account' ? (row.accountPassword || '').trim() : '';
@@ -1690,9 +1899,15 @@ export async function addBatchStructuredStockRows(input: {
       accountPassword: passVal,
       accountNotes: notesVal,
       remainingUses: qtyVal,
+      skipProductSync: true,
     });
     docsAdded++;
     unitsAdded += qtyVal;
+  }
+
+  if (docsAdded > 0) {
+    await syncProductStockSnapshot(cleanProductId);
+    await notifyWaitingRestockAlerts(cleanProductId);
   }
   return { docsAdded, unitsAdded };
 }
@@ -1703,31 +1918,7 @@ export async function deleteAdminStockAccount(stock: StoreStockItemRecord): Prom
   try {
     await deleteDoc(doc(db, 'storeStock', stock.id));
     if (stock.status === 'available') {
-      const unitsToRemove =
-        typeof stock.remainingUses === 'number'
-          ? Math.max(0, Math.round(stock.remainingUses))
-          : 1;
-      const prodRef = doc(db, 'storeProducts', stock.productId);
-      const prodSnap = await getDoc(prodRef);
-      if (prodSnap.exists()) {
-        const existingData = prodSnap.data();
-        const currentStock = Math.max(0, Number(existingData.stockCount || 0) - unitsToRemove);
-        await updateDoc(prodRef, {
-          title: clampString(existingData.title, 120, 'Produk'),
-          category: clampString(existingData.category, 60, 'Premium'),
-          description: clampString(existingData.description, 2000, 'Deskripsi'),
-          usageGuide: clampString(existingData.usageGuide || '', 2500, ''),
-          variantsJson: existingData.variantsJson || '[]',
-          price: Number(existingData.price || 0),
-          durationLabel: clampString(existingData.durationLabel, 60, '30 Hari'),
-          badge: clampString(existingData.badge || '', 40, ''),
-          ratingAvg: Number(existingData.ratingAvg ?? 5),
-          ratingCount: Number(existingData.ratingCount || 0),
-          createdAt: existingData.createdAt || serverTimestamp(),
-          stockCount: currentStock,
-          updatedAt: serverTimestamp(),
-        });
-      }
+      await syncProductStockSnapshot(stock.productId);
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, stockPath);
@@ -1868,6 +2059,7 @@ export async function purchaseProductAutomatically(input: {
   const cleanVariantId = sanitizeId(variant.id);
 
   let availableDocs;
+  let allUsableDocs: any[] = [];
   try {
     const q = query(
       collection(db, 'storeStock'),
@@ -1879,10 +2071,17 @@ export async function purchaseProductAutomatically(input: {
       const rem = d.data().remainingUses;
       return typeof rem === 'number' ? rem > 0 : true;
     });
+    allUsableDocs = usableDocs;
+    const prodVariants = getVariantsForProduct(product);
     const exactVariantDocs = usableDocs.filter(
-      (d) => String(d.data().variantId || '') === cleanVariantId
+      (d) => sanitizeId(String(d.data().variantId || '')) === cleanVariantId
     );
-    availableDocs = exactVariantDocs.length > 0 ? exactVariantDocs : usableDocs;
+    availableDocs =
+      exactVariantDocs.length > 0
+        ? exactVariantDocs
+        : prodVariants.length <= 1
+        ? usableDocs
+        : [];
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, stockQueryPath);
   }
@@ -1935,9 +2134,54 @@ export async function purchaseProductAutomatically(input: {
       freshUsageGuide = String(pData.usageGuide || product.usageGuide || '');
       const existingCount = Math.max(0, Math.round(Number(pData.stockCount ?? 0)));
       const existingSold = Math.max(0, Math.round(Number(pData.soldCount || 0)));
+
+      // Recompute exact post-purchase per-variant stockCount from live storeStock snapshot
+      const postPurchasePerVariant: Record<string, number> = {};
+      let postPurchaseTotal = 0;
+      allUsableDocs.forEach((d) => {
+        const raw = d.data() as any;
+        const rawUnits =
+          typeof raw.remainingUses === 'number' ? Math.max(0, Math.round(raw.remainingUses)) : 1;
+        const remainingAfter = d.id === stockId ? Math.max(0, rawUnits - 1) : rawUnits;
+        if (remainingAfter <= 0) return;
+        const vKey = sanitizeId(String(raw.variantId || 'var_reguler'));
+        postPurchasePerVariant[vKey] = (postPurchasePerVariant[vKey] || 0) + remainingAfter;
+        postPurchaseTotal += remainingAfter;
+      });
+
+      const parsedVars = getVariantsForProduct({
+        id: product.id,
+        variantsJson: pData.variantsJson,
+        durationLabel: String(pData.durationLabel || product.durationLabel || '30 Hari'),
+        price: Number(pData.price ?? product.price ?? 0),
+      });
+      const delivType =
+        parsedVars[0]?.deliveryType === 'link'
+          ? 'link'
+          : parsedVars[0]?.deliveryType === 'redeem'
+          ? 'redeem'
+          : 'account';
+      const existingIcon = parsedVars.find((v) => v.iconUrl)?.iconUrl || '';
+      const existingBenefits = parsedVars.find((v) => v.benefitsText)?.benefitsText || '';
+      const existingFaqs = parsedVars.find((v) => v.faqs && v.faqs.length > 0)?.faqs;
+      const updatedVars = parsedVars.map((v) => {
+        const vKey = sanitizeId(v.id);
+        const computedCount =
+          parsedVars.length <= 1 ? postPurchaseTotal : postPurchasePerVariant[vKey] || 0;
+        return { ...v, stockCount: Math.min(1000000, Math.max(0, computedCount)) };
+      });
+      const nextVariantsJson = serializeVariants(
+        updatedVars,
+        delivType,
+        existingIcon,
+        existingBenefits,
+        existingFaqs
+      );
+
       await updateDoc(doc(db, 'storeProducts', product.id), {
         stockCount: Math.max(0, existingCount - 1),
         soldCount: Math.min(100000000, existingSold + 1),
+        ...(nextVariantsJson.length <= 8000 ? { variantsJson: nextVariantsJson } : {}),
         updatedAt: serverTimestamp(),
       });
     }
@@ -2001,49 +2245,80 @@ export async function purchaseProductAutomatically(input: {
   };
 }
 
-// Customer: Submit Rating & Review after purchase (with automatic toxic word censoring)
+// Customer: Submit or Edit Rating & Review after purchase (capsules, toxic word censoring & A**s anonymous masking)
 export async function submitOrderRating(input: {
   order: StoreOrderRecord;
   rating: number;
   comment: string;
+  tags?: string[];
+  isAnonymous?: boolean;
   buyer: User;
 }): Promise<string> {
   const { order, buyer } = input;
+  const isAnonymous = Boolean(input.isAnonymous);
   const cleanRating = Math.max(1, Math.min(5, Math.round(input.rating)));
-  const rawComment = clampString(
-    input.comment,
-    500,
-    'Pengiriman otomatis sangat cepat dan produk berfungsi dengan baik.'
-  );
-  const censoredComment = censorToxicWords(rawComment);
+  const reviewTagsJson = serializeReviewTags(input.tags, cleanRating);
+  const parsedTags = parseReviewTags(reviewTagsJson);
+
+  const trimmedComment = (input.comment || '').trim().slice(0, 500);
+  const rawComment =
+    trimmedComment.length > 0
+      ? trimmedComment
+      : parsedTags.length > 0
+      ? ''
+      : 'Pengiriman otomatis sangat cepat dan produk berfungsi dengan baik.';
+  const censoredComment = rawComment ? censorToxicWords(rawComment) : '';
   const reviewId = sanitizeId(`rev_${order.id}`);
+  const rawBuyerName = clampString(
+    buyer.displayName || buyer.email?.split('@')[0] || 'Pembeli Terverifikasi',
+    100
+  );
+  const publicBuyerName = isAnonymous ? maskAnonymousBuyerName(rawBuyerName) : rawBuyerName;
+  const previousRating = Number(order.rating || 0);
 
   try {
     await updateDoc(doc(db, 'storeOrders', order.id), {
       rating: cleanRating,
       reviewComment: censoredComment,
+      reviewTagsJson,
+      isAnonymous,
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `storeOrders/${order.id}`);
   }
 
+  const reviewRef = doc(db, 'storeReviews', reviewId);
   try {
-    await setDoc(doc(db, 'storeReviews', reviewId), {
-      productId: sanitizeId(order.productId),
-      productTitle: clampString(order.productTitle, 120),
-      orderId: sanitizeId(order.id),
-      buyerUid: sanitizeId(buyer.uid),
-      buyerName: clampString(
-        buyer.displayName || buyer.email?.split('@')[0] || 'Pembeli Terverifikasi',
-        100
-      ),
-      rating: cleanRating,
-      comment: censoredComment,
-      createdAt: serverTimestamp(),
-    });
+    const existingReviewSnap = await getDoc(reviewRef);
+    if (existingReviewSnap.exists()) {
+      const prevRev = existingReviewSnap.data();
+      await updateDoc(reviewRef, {
+        buyerName: publicBuyerName,
+        isAnonymous,
+        rating: cleanRating,
+        comment: censoredComment,
+        reviewTagsJson,
+        createdAt: prevRev.createdAt || serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    } else {
+      await setDoc(reviewRef, {
+        productId: sanitizeId(order.productId),
+        productTitle: clampString(order.productTitle, 120),
+        orderId: sanitizeId(order.id),
+        buyerUid: sanitizeId(buyer.uid),
+        buyerName: publicBuyerName,
+        isAnonymous,
+        rating: cleanRating,
+        comment: censoredComment,
+        reviewTagsJson,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    }
   } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, `storeReviews/${reviewId}`);
+    handleFirestoreError(error, OperationType.UPDATE, `storeReviews/${reviewId}`);
   }
 
   try {
@@ -2051,10 +2326,17 @@ export async function submitOrderRating(input: {
     const prodSnap = await getDoc(prodRef);
     if (prodSnap.exists()) {
       const data = prodSnap.data();
-      const oldCount = Number(data.ratingCount || 0);
+      const oldCount = Math.max(0, Math.round(Number(data.ratingCount || 0)));
       const oldAvg = Number(data.ratingAvg || 5);
-      const newCount = oldCount + 1;
-      const newAvg = Number(((oldAvg * oldCount + cleanRating) / newCount).toFixed(2));
+      let newCount = oldCount;
+      let newAvg = cleanRating;
+      if (previousRating >= 1 && oldCount >= 1) {
+        newCount = oldCount;
+        newAvg = Number(((oldAvg * oldCount - previousRating + cleanRating) / oldCount).toFixed(2));
+      } else {
+        newCount = oldCount + 1;
+        newAvg = Number(((oldAvg * oldCount + cleanRating) / newCount).toFixed(2));
+      }
       await updateDoc(prodRef, {
         ratingAvg: Math.max(1, Math.min(5, newAvg)),
         ratingCount: newCount,

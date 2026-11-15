@@ -318,6 +318,16 @@
           "minLength": 0,
           "maxLength": 500
         },
+        "reviewTagsJson": {
+          "type": "string",
+          "description": "JSON array of selected review capsule labels",
+          "minLength": 0,
+          "maxLength": 600
+        },
+        "isAnonymous": {
+          "type": "boolean",
+          "description": "Whether the buyer chose to submit the rating anonymously"
+        },
         "refundReason": {
           "type": "string",
           "description": "Reason provided by the buyer when requesting a refund",
@@ -539,14 +549,29 @@
         },
         "comment": {
           "type": "string",
-          "description": "Censored review comment",
-          "minLength": 1,
+          "description": "Censored review comment (optional when capsule tags are selected)",
+          "minLength": 0,
           "maxLength": 500
+        },
+        "reviewTagsJson": {
+          "type": "string",
+          "description": "JSON array of selected review capsule labels",
+          "minLength": 0,
+          "maxLength": 600
+        },
+        "isAnonymous": {
+          "type": "boolean",
+          "description": "Whether the reviewer chose to hide their name anonymously"
         },
         "createdAt": {
           "type": "string",
           "format": "date-time",
           "description": "Creation server timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last edit server timestamp"
         }
       },
       "required": [

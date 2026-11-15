@@ -98,6 +98,11 @@ import {
   subscribeProductRestockAlert,
   dismissRestockAlert,
   purgeLegacyFakeStoreData,
+  syncProductStockSnapshot,
+  maskAnonymousBuyerName,
+  isAnonymousReviewRecord,
+  getReviewCapsuleOptions,
+  parseReviewTags,
   sanitizeId,
 } from '../lib/firestoreStore';
 
@@ -328,13 +333,10 @@ function formatShortDate(ms: number): string {
 }
 
 function getInitials(name: string): string {
-  const parts = String(name || 'Pembeli')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  if (parts.length === 0) return 'PB';
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  const trimmed = String(name || '').trim();
+  const firstAlnum = trimmed.match(/[a-zA-Z0-9]/);
+  if (firstAlnum) return firstAlnum[0].toUpperCase();
+  return 'A';
 }
 
 function formatBytes(bytes: number): string {
@@ -450,6 +452,8 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
   const [refundTickets, setRefundTickets] = useState<StoreRefundTicketRecord[]>([]);
   const [adminStock, setAdminStock] = useState<StoreStockItemRecord[]>([]);
   const [variantStockCounts, setVariantStockCounts] = useState<Record<string, number>>({});
+  const [variantCountsLoaded, setVariantCountsLoaded] = useState<boolean>(false);
+  const syncedProductStockRef = useRef<Set<string>>(new Set());
   const [restockAlerts, setRestockAlerts] = useState<StoreRestockAlertRecord[]>([]);
   const [loadingProducts, setLoadingProducts] = useState<boolean>(true);
 
@@ -475,8 +479,18 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
   }, [reviews, globalReviewLimit]);
 
   // Rating Form State per order
-  const [ratingDrafts, setRatingDrafts] = useState<Record<string, { rating: number; comment: string }>>({});
+  const [ratingDrafts, setRatingDrafts] = useState<
+    Record<string, { rating: number; comment: string; tags?: string[]; isAnonymous?: boolean }>
+  >({});
   const [submittingRatingOrderId, setSubmittingRatingOrderId] = useState<string | null>(null);
+  const [editingReviewOrderId, setEditingReviewOrderId] = useState<string | null>(null);
+
+  // Mandatory Login Overlay Modal when guest tries to purchase
+  const [loginPromptAction, setLoginPromptAction] = useState<
+    null | 'proceed_to_cart' | 'create_invoice' | 'complete_purchase' | 'restock_alert'
+  >(null);
+  const [pendingRestockProduct, setPendingRestockProduct] = useState<StoreProductRecord | null>(null);
+  const [isSigningInFromModal, setIsSigningInFromModal] = useState<boolean>(false);
 
   // Dedicated /store/refund Form State
   const [refundSelectedOrderId, setRefundSelectedOrderId] = useState<string>('');
@@ -700,8 +714,10 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
   useEffect(() => {
     if (activeProduct && (!selectedProduct || selectedProduct.id !== activeProduct.id)) {
       const vars = getVariantsForProduct(activeProduct);
+      const firstAvailable =
+        vars.find((v) => getVariantAvailableCount(activeProduct, v.id) > 0) || vars[0] || null;
       setSelectedProduct(activeProduct);
-      setSelectedVariant(vars[0] || null);
+      setSelectedVariant(firstAvailable);
       setProductReviewPage(1);
       setOpenProductFaqIdx(0);
     }
@@ -873,6 +889,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
       setRestockAlerts([]);
       setAdminStock([]);
       setVariantStockCounts({});
+      setVariantCountsLoaded(false);
       return;
     }
 
@@ -888,8 +905,9 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
       setRestockAlerts(items);
     });
 
-    const unsubVarCounts = subscribeAvailableStockByVariant((counts) => {
+    const unsubVarCounts = subscribeAvailableStockByVariant((counts, loaded) => {
       setVariantStockCounts(counts);
+      setVariantCountsLoaded(Boolean(loaded));
     });
 
     let unsubStock: (() => void) | undefined;
@@ -907,6 +925,36 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
       if (unsubStock) unsubStock();
     };
   }, [authReady, currentUser, adminMode]);
+
+  // Self-healing sync for Admin: keep storeProducts.variantsJson per-variant stockCounts synchronized with live storeStock
+  useEffect(() => {
+    if (!adminMode || !currentUser || !variantCountsLoaded || products.length === 0) return;
+
+    products.forEach((p) => {
+      const vars = getVariantsForProduct(p);
+      const expectedTotal = variantStockCounts[`${p.id}__total`] || 0;
+      const needsSync =
+        p.stockCount !== expectedTotal ||
+        vars.some((v) => {
+          const expectedVarCount =
+            vars.length <= 1
+              ? expectedTotal
+              : variantStockCounts[`${p.id}__${sanitizeId(v.id)}`] || 0;
+          return typeof v.stockCount !== 'number' || v.stockCount !== expectedVarCount;
+        });
+
+      if (!needsSync) return;
+      const syncSignature = `${p.id}:${p.stockCount}:${expectedTotal}:${vars
+        .map((v) => `${sanitizeId(v.id)}=${v.stockCount ?? 'na'}`)
+        .join(',')}`;
+      if (syncedProductStockRef.current.has(syncSignature)) return;
+      syncedProductStockRef.current.add(syncSignature);
+
+      syncProductStockSnapshot(p.id).catch((err) => {
+        console.debug('Auto variant stock snapshot sync skipped:', err);
+      });
+    });
+  }, [adminMode, currentUser, variantCountsLoaded, variantStockCounts, products]);
 
   const myOrders = useMemo(() => {
     if (!currentUser) return [];
@@ -1009,15 +1057,30 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
   }, [restockAlerts, products, currentUser]);
 
   const getVariantAvailableCount = (product: StoreProductRecord, variantId: string): number => {
-    const key = `${product.id}__${sanitizeId(variantId)}`;
-    if (key in variantStockCounts) {
-      return variantStockCounts[key];
-    }
-    const totalTracked = variantStockCounts[`${product.id}__total`];
-    if (typeof totalTracked === 'number') {
+    const cleanVarId = sanitizeId(variantId);
+    const key = `${product.id}__${cleanVarId}`;
+
+    // 1. Live private storeStock listener (when signed in & server snapshot loaded)
+    if (variantCountsLoaded) {
+      if (key in variantStockCounts) {
+        return variantStockCounts[key];
+      }
+      const totalTracked = variantStockCounts[`${product.id}__total`];
+      if (typeof totalTracked === 'number') {
+        return 0;
+      }
       return 0;
     }
-    return product.stockCount;
+
+    // 2. Public per-variant stockCount persisted inside product.variantsJson (accurate on Vercel & before login!)
+    const prodVars = getVariantsForProduct(product);
+    const matchedVar = prodVars.find((v) => sanitizeId(v.id) === cleanVarId);
+    if (typeof matchedVar?.stockCount === 'number') {
+      return matchedVar.stockCount;
+    }
+
+    // 3. Single-variant legacy fallback (never clone total product stock across multiple variations!)
+    return prodVars.length <= 1 ? product.stockCount : 0;
   };
 
   const copyToClipboard = async (text: string, key: string) => {
@@ -1070,14 +1133,53 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
   const handleSelectProductForCheckout = (product: StoreProductRecord) => {
     uiSfx.playClick();
     const variants = getVariantsForProduct(product);
+    const firstAvailable =
+      variants.find((v) => getVariantAvailableCount(product, v.id) > 0) || variants[0] || null;
     setSelectedProduct(product);
-    setSelectedVariant(variants[0] || null);
+    setSelectedVariant(firstAvailable);
     setProductInfoTab('benefit');
     setProductReviewPage(1);
     navigateStorePath(`/produk/${toProductSlug(product.title)}`);
   };
 
-  // 2. Proceed from /produk/:nama-produk to /cart (Only active when in stock)
+  const executeCreateInvoiceForUser = async (activeUser: User) => {
+    const targetProd = selectedProduct || activeProduct;
+    if (!targetProd || !selectedVariant) return;
+
+    const varStock = getVariantAvailableCount(targetProd, selectedVariant.id);
+    if (targetProd.stockCount <= 0 || varStock <= 0) {
+      showToast('error', 'Stok variasi produk ini sudah habis.');
+      return;
+    }
+
+    setIsCreatingInvoice(true);
+    try {
+      const txData = await createWijayapayTransaction({
+        paymentMethod: selectedPayment,
+        nominal: cartPricing.subtotal,
+      });
+      setPaymentTx(txData);
+      if (typeof window !== 'undefined') {
+        try {
+          window.sessionStorage.setItem('jays_active_payment_tx_v1', JSON.stringify(txData));
+        } catch {}
+      }
+      if (!buyerFullName.trim() && activeUser.displayName) {
+        setBuyerFullName(activeUser.displayName);
+      }
+      if (!buyerEmailInput.trim() && activeUser.email) {
+        setBuyerEmailInput(activeUser.email);
+      }
+      navigateStorePath(`/pay/${encodeURIComponent(txData.ref_id)}`);
+      showToast('success', `Tagihan ${txData.payment_name} (${txData.ref_id}) berhasil dibuat.`);
+    } catch (err: any) {
+      showToast('error', err?.message || 'Gagal membuat kode pembayaran.');
+    } finally {
+      setIsCreatingInvoice(false);
+    }
+  };
+
+  // 2. Proceed from /produk/:nama-produk to /cart (Requires Login Overlay if guest!)
   const handleProceedToCart = () => {
     const targetProd = activeProduct || selectedProduct;
     if (!targetProd) return;
@@ -1093,10 +1195,17 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
 
     setSelectedProduct(targetProd);
     setSelectedVariant(targetVar);
+
+    if (!currentUser) {
+      uiSfx.playClick();
+      setLoginPromptAction('proceed_to_cart');
+      return;
+    }
+
     navigateStorePath('/cart');
   };
 
-  // 3. Checkout on /cart -> Create Payment Code / QRIS & Redirect to /pay/:id-transaksi
+  // 3. Checkout on /cart -> Create Payment Code / QRIS & Redirect to /pay/:id-transaksi (Requires Login Overlay if guest!)
   const handleCreatePaymentInvoice = async () => {
     const targetProd = selectedProduct || activeProduct;
     if (!targetProd || !selectedVariant) return;
@@ -1107,41 +1216,23 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
       return;
     }
 
-    let activeUser = currentUser;
-    if (!activeUser) {
-      activeUser = await handleLogin();
-      if (!activeUser) return;
+    if (!currentUser) {
+      uiSfx.playClick();
+      setLoginPromptAction('create_invoice');
+      return;
     }
 
-    setIsCreatingInvoice(true);
-    try {
-      const txData = await createWijayapayTransaction({
-        paymentMethod: selectedPayment,
-        nominal: cartPricing.subtotal,
-      });
-      setPaymentTx(txData);
-      if (typeof window !== 'undefined') {
-        try {
-          window.sessionStorage.setItem('jays_active_payment_tx_v1', JSON.stringify(txData));
-        } catch {}
-      }
-      navigateStorePath(`/pay/${encodeURIComponent(txData.ref_id)}`);
-      showToast('success', `Tagihan ${txData.payment_name} (${txData.ref_id}) berhasil dibuat.`);
-    } catch (err: any) {
-      showToast('error', err?.message || 'Gagal membuat kode pembayaran.');
-    } finally {
-      setIsCreatingInvoice(false);
-    }
+    await executeCreateInvoiceForUser(currentUser);
   };
 
-  // 4. Deliver Purchased Account / Redeem Code & Navigate to /receipt/:id-transaksi
-  const deliverPurchasedItem = async () => {
+  // 4. Deliver Purchased Account / Redeem Code / Link & Navigate to /receipt/:id-transaksi
+  const deliverPurchasedItem = async (overrideUser?: User) => {
     const targetProd = selectedProduct || activeProduct;
     if (!targetProd || !selectedVariant) return;
-    let activeUser = currentUser;
+    const activeUser = overrideUser || currentUser;
     if (!activeUser) {
-      activeUser = await handleLogin();
-      if (!activeUser) return;
+      setLoginPromptAction('complete_purchase');
+      return;
     }
 
     setIsCompletingPayment(true);
@@ -1171,6 +1262,35 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
       showToast('error', err?.message || 'Gagal memproses pengiriman otomatis.');
     } finally {
       setIsCompletingPayment(false);
+    }
+  };
+
+  // Handle Login Inside Mandatory Login Overlay & Resume Pending Purchase Action
+  const handleConfirmLoginFromOverlay = async () => {
+    setIsSigningInFromModal(true);
+    try {
+      const user = await handleLogin();
+      if (!user) return;
+      const actionToResume = loginPromptAction;
+      const restockProdToResume = pendingRestockProduct;
+      setLoginPromptAction(null);
+      setPendingRestockProduct(null);
+
+      if (actionToResume === 'proceed_to_cart') {
+        navigateStorePath('/cart');
+      } else if (actionToResume === 'create_invoice') {
+        await executeCreateInvoiceForUser(user);
+      } else if (actionToResume === 'complete_purchase') {
+        await deliverPurchasedItem(user);
+      } else if (actionToResume === 'restock_alert' && restockProdToResume) {
+        await subscribeProductRestockAlert({ product: restockProdToResume, user });
+        showToast(
+          'success',
+          `Pengingat stok otomatis diaktifkan untuk ${restockProdToResume.title}.`
+        );
+      }
+    } finally {
+      setIsSigningInFromModal(false);
     }
   };
 
@@ -1214,40 +1334,106 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
 
   // Subscribe to Restock Alert
   const handleSubscribeRestock = async (product: StoreProductRecord) => {
-    let activeUser = currentUser;
-    if (!activeUser) {
-      activeUser = await handleLogin();
-      if (!activeUser) return;
+    if (!currentUser) {
+      uiSfx.playClick();
+      setPendingRestockProduct(product);
+      setLoginPromptAction('restock_alert');
+      return;
     }
     try {
-      await subscribeProductRestockAlert({ product, user: activeUser });
+      await subscribeProductRestockAlert({ product, user: currentUser });
       showToast('success', `Pengingat stok otomatis diaktifkan untuk ${product.title}.`);
     } catch (err: any) {
       showToast('error', err?.message || 'Gagal mengaktifkan pengingat stok.');
     }
   };
 
-  // Submit Rating (with automatic Toxic Filter)
+  // Submit or Edit Rating (with star-tiered capsules, Toxic Filter + A**s Anonymous Masking)
   const handleRatingSubmit = async (order: StoreOrderRecord) => {
     if (!currentUser) return;
-    const draft = ratingDrafts[order.id] || { rating: 5, comment: '' };
+    const isEditingExisting = order.rating > 0;
+    const draft = ratingDrafts[order.id] || {
+      rating: 5,
+      comment: '',
+      tags: [],
+      isAnonymous: false,
+    };
+    const allowedCapsules = getReviewCapsuleOptions(draft.rating);
+    const activeTags = (draft.tags || []).filter((t) => allowedCapsules.includes(t));
+    const trimmedComment = draft.comment.trim();
+    const finalComment =
+      trimmedComment.length > 0
+        ? trimmedComment
+        : activeTags.length > 0
+        ? ''
+        : 'Pengiriman instan dan produk berfungsi dengan sangat baik.';
+
     setSubmittingRatingOrderId(order.id);
     try {
-      const finalComment =
-        draft.comment.trim() ||
-        'Pengiriman instan dan produk berfungsi dengan sangat baik.';
       await submitOrderRating({
         order,
         rating: draft.rating,
         comment: finalComment,
+        tags: activeTags,
+        isAnonymous: Boolean(draft.isAnonymous),
         buyer: currentUser,
       });
-      showToast('success', 'Terima kasih! Rating & ulasan Anda telah dipublikasikan.');
+      setEditingReviewOrderId(null);
+      showToast(
+        'success',
+        isEditingExisting
+          ? 'Perubahan ulasan & capsule berhasil disimpan.'
+          : 'Terima kasih! Rating & ulasan Anda telah dipublikasikan.'
+      );
     } catch (err: any) {
-      showToast('error', err?.message || 'Gagal mengirim ulasan.');
+      showToast('error', err?.message || 'Gagal menyimpan ulasan.');
     } finally {
       setSubmittingRatingOrderId(null);
     }
+  };
+
+  const handleStartEditReview = (order: StoreOrderRecord) => {
+    uiSfx.playClick();
+    const currentStars = Math.max(1, Math.min(5, order.rating || 5));
+    const allowedCapsules = getReviewCapsuleOptions(currentStars);
+    const existingTags = parseReviewTags(order.reviewTagsJson).filter((t) =>
+      allowedCapsules.includes(t)
+    );
+    setRatingDrafts((prev) => ({
+      ...prev,
+      [order.id]: {
+        rating: currentStars,
+        comment: order.reviewComment || '',
+        tags: existingTags,
+        isAnonymous: Boolean(order.isAnonymous),
+      },
+    }));
+    setEditingReviewOrderId(order.id);
+  };
+
+  const handleToggleReviewCapsule = (orderId: string, capsule: string, currentRating: number) => {
+    uiSfx.playClick();
+    const allowed = getReviewCapsuleOptions(currentRating);
+    setRatingDrafts((prev) => {
+      const existing = prev[orderId] || {
+        rating: currentRating,
+        comment: '',
+        tags: [],
+        isAnonymous: false,
+      };
+      const cleanTags = (existing.tags || []).filter((t) => allowed.includes(t));
+      const nextTags = cleanTags.includes(capsule)
+        ? cleanTags.filter((t) => t !== capsule)
+        : [...cleanTags, capsule];
+      return {
+        ...prev,
+        [orderId]: {
+          ...existing,
+          rating: existing.rating ?? currentRating,
+          tags: nextTags,
+        },
+      };
+    });
   };
 
   // Handle Refund Photo Upload (Max 2 photos, Auto-compress if > 1MB)
@@ -3216,32 +3402,57 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                       ) : (
                         <>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {displayedProductReviews.map((rev) => (
-                              <div
-                                key={rev.id}
-                                className="bg-white border border-zinc-200 rounded-xl p-5 flex items-start gap-3.5"
-                              >
-                                <div className="w-9 h-9 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-xs font-semibold text-zinc-700 shrink-0">
-                                  {getInitials(rev.buyerName)}
-                                </div>
-                                <div className="flex-1 min-w-0 space-y-1">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span className="text-xs font-semibold text-zinc-900 truncate">
-                                      {rev.buyerName}
-                                    </span>
-                                    <span className="text-[11px] text-zinc-400 shrink-0">
-                                      {formatShortDate(rev.createdAtMs)}
-                                    </span>
+                            {displayedProductReviews.map((rev) => {
+                              const isAnon = isAnonymousReviewRecord(rev);
+                              const displayReviewerName = isAnon
+                                ? maskAnonymousBuyerName(rev.buyerName)
+                                : rev.buyerName;
+                              const revTags = parseReviewTags(rev.reviewTagsJson);
+                              const cleanComment = rev.comment ? censorToxicWords(rev.comment) : '';
+                              return (
+                                <div
+                                  key={rev.id}
+                                  className="bg-white border border-zinc-200 rounded-xl p-5 flex items-start gap-3.5"
+                                >
+                                  <div className="w-9 h-9 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-xs font-semibold text-zinc-700 shrink-0">
+                                    {getInitials(displayReviewerName)}
                                   </div>
-                                  <div className="text-xs text-amber-500 leading-none">
-                                    {'★'.repeat(Math.max(1, Math.min(5, rev.rating)))}
+                                  <div className="flex-1 min-w-0 space-y-2">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <span className="text-xs font-semibold text-zinc-950 truncate">
+                                          {displayReviewerName}
+                                        </span>
+                                        <span className="text-zinc-300">|</span>
+                                        <span className="text-xs text-amber-500 leading-none shrink-0">
+                                          {'★'.repeat(Math.max(1, Math.min(5, rev.rating)))}
+                                        </span>
+                                      </div>
+                                      <span className="text-[11px] text-zinc-400 shrink-0">
+                                        {formatShortDate(rev.createdAtMs || 0)}
+                                      </span>
+                                    </div>
+                                    {revTags.length > 0 && (
+                                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                                        {revTags.map((tag) => (
+                                          <span
+                                            key={tag}
+                                            className="px-3 py-1 rounded-full bg-zinc-100 text-zinc-700 text-[11px] font-normal"
+                                          >
+                                            {tag}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {cleanComment && (
+                                      <p className="text-xs text-zinc-600 font-light leading-relaxed pt-0.5">
+                                        {cleanComment}
+                                      </p>
+                                    )}
                                   </div>
-                                  <p className="text-xs text-zinc-600 font-light leading-relaxed pt-1">
-                                    {censorToxicWords(rev.comment)}
-                                  </p>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
 
                           {/* Per-10 Pagination Bar matching reference screenshot */}
@@ -4235,72 +4446,235 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                     </span>
                   </div>
 
-                  {activeReceiptOrder.rating > 0 ? (
-                    <div className="p-4 bg-zinc-50 border border-zinc-200 text-xs text-zinc-800">
-                      Ulasan Anda: ★ {activeReceiptOrder.rating}/5 — &ldquo;
-                      {censorToxicWords(activeReceiptOrder.reviewComment)}&rdquo;
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        {[1, 2, 3, 4, 5].map((star) => {
-                          const currentRating =
-                            ratingDrafts[activeReceiptOrder.id]?.rating ?? 5;
-                          return (
+                  {activeReceiptOrder.rating > 0 && editingReviewOrderId !== activeReceiptOrder.id ? (
+                    (() => {
+                      const existingTags = parseReviewTags(activeReceiptOrder.reviewTagsJson);
+                      const cleanExistingComment = activeReceiptOrder.reviewComment
+                        ? censorToxicWords(activeReceiptOrder.reviewComment)
+                        : '';
+                      return (
+                        <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl text-xs text-zinc-800 space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 font-semibold text-zinc-950">
+                              <span className="text-amber-500">
+                                {'★'.repeat(Math.max(1, Math.min(5, activeReceiptOrder.rating)))}
+                              </span>
+                              <span>({activeReceiptOrder.rating}/5)</span>
+                            </div>
                             <button
-                              key={star}
                               type="button"
-                              onClick={() =>
+                              onClick={() => handleStartEditReview(activeReceiptOrder)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-300 bg-white hover:border-zinc-950 text-zinc-800 text-[11px] font-mono-code cursor-pointer lowercase"
+                            >
+                              <Pencil size={11} />
+                              <span>edit ulasan &amp; capsule</span>
+                            </button>
+                          </div>
+
+                          {existingTags.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {existingTags.map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="px-3 py-1 rounded-full bg-white border border-zinc-200 text-zinc-700 text-[11px]"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {cleanExistingComment && (
+                            <div className="text-zinc-700 leading-relaxed">
+                              &ldquo;{cleanExistingComment}&rdquo;
+                            </div>
+                          )}
+
+                          {activeReceiptOrder.isAnonymous && (
+                            <div className="text-[11px] font-mono-code text-zinc-500">
+                              [Dipublikasikan sebagai Anonim · Profil:{' '}
+                              {getInitials(maskAnonymousBuyerName(activeReceiptOrder.buyerName))}{' '}
+                              · Nama: {maskAnonymousBuyerName(activeReceiptOrder.buyerName)}]
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    (() => {
+                      const draft = ratingDrafts[activeReceiptOrder.id] || {
+                        rating: activeReceiptOrder.rating || 5,
+                        comment: activeReceiptOrder.reviewComment || '',
+                        tags: parseReviewTags(activeReceiptOrder.reviewTagsJson),
+                        isAnonymous: Boolean(activeReceiptOrder.isAnonymous),
+                      };
+                      const currentRating = draft.rating ?? 5;
+                      const capsuleOptions = getReviewCapsuleOptions(currentRating);
+                      const selectedTags = (draft.tags || []).filter((t) =>
+                        capsuleOptions.includes(t)
+                      );
+                      const isAnonDraft = Boolean(draft.isAnonymous);
+                      const buyerBaseName =
+                        currentUser?.displayName ||
+                        currentUser?.email?.split('@')[0] ||
+                        activeReceiptOrder.buyerName ||
+                        'Pembeli';
+
+                      return (
+                        <div className="space-y-4">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                  key={star}
+                                  type="button"
+                                  onClick={() => {
+                                    const nextAllowed = getReviewCapsuleOptions(star);
+                                    setRatingDrafts((prev) => {
+                                      const curr = prev[activeReceiptOrder.id] || draft;
+                                      const filteredTags = (curr.tags || []).filter((t) =>
+                                        nextAllowed.includes(t)
+                                      );
+                                      return {
+                                        ...prev,
+                                        [activeReceiptOrder.id]: {
+                                          rating: star,
+                                          comment: curr.comment ?? '',
+                                          tags: filteredTags,
+                                          isAnonymous: Boolean(curr.isAnonymous),
+                                        },
+                                      };
+                                    });
+                                  }}
+                                  className="cursor-pointer p-1"
+                                >
+                                  <Star
+                                    size={20}
+                                    className={
+                                      star <= currentRating
+                                        ? 'fill-amber-400 text-amber-400'
+                                        : 'text-zinc-300'
+                                    }
+                                  />
+                                </button>
+                              ))}
+                              <span className="ml-1.5 text-xs font-mono-code text-zinc-500">
+                                ({currentRating}/5)
+                              </span>
+                            </div>
+
+                            {editingReviewOrderId === activeReceiptOrder.id && (
+                              <button
+                                type="button"
+                                onClick={() => setEditingReviewOrderId(null)}
+                                className="px-3 py-1 rounded-lg border border-zinc-300 text-zinc-600 hover:border-zinc-950 text-[11px] font-mono-code cursor-pointer lowercase"
+                              >
+                                batal edit
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Star-Tiered Review Capsules */}
+                          <div className="space-y-2">
+                            <div className="text-[11px] font-mono-code text-zinc-500">
+                              {currentRating <= 2
+                                ? 'Pilih kendala ulasan (Bintang 1–2):'
+                                : 'Pilih kesan ulasan (Bintang 3–5):'}
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {capsuleOptions.map((capsule) => {
+                                const isPicked = selectedTags.includes(capsule);
+                                return (
+                                  <button
+                                    key={capsule}
+                                    type="button"
+                                    onClick={() =>
+                                      handleToggleReviewCapsule(
+                                        activeReceiptOrder.id,
+                                        capsule,
+                                        currentRating
+                                      )
+                                    }
+                                    className={`px-3.5 py-1.5 rounded-full text-xs border transition-colors cursor-pointer ${
+                                      isPicked
+                                        ? 'bg-zinc-950 text-white border-zinc-950'
+                                        : 'bg-zinc-100 text-zinc-700 border-zinc-200 hover:border-zinc-400'
+                                    }`}
+                                  >
+                                    {isPicked ? `✓ ${capsule}` : capsule}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row gap-3">
+                            <input
+                              type="text"
+                              value={draft.comment ?? ''}
+                              onChange={(e) =>
                                 setRatingDrafts((prev) => ({
                                   ...prev,
                                   [activeReceiptOrder.id]: {
-                                    rating: star,
-                                    comment: prev[activeReceiptOrder.id]?.comment ?? '',
+                                    ...draft,
+                                    comment: e.target.value,
                                   },
                                 }))
                               }
-                              className="cursor-pointer p-1"
+                              placeholder="Tulis pengalaman pembelian Anda (opsional jika sudah pilih capsule)..."
+                              className="flex-1 px-3.5 py-2 border border-zinc-300 text-xs focus:outline-none focus:border-zinc-950"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRatingSubmit(activeReceiptOrder)}
+                              disabled={submittingRatingOrderId === activeReceiptOrder.id}
+                              className="px-5 py-2 bg-zinc-950 text-white text-xs font-mono-code cursor-pointer lowercase disabled:opacity-50"
                             >
-                              <Star
-                                size={18}
-                                className={
-                                  star <= currentRating
-                                    ? 'fill-zinc-950 text-zinc-950'
-                                    : 'text-zinc-300'
-                                }
-                              />
+                              {submittingRatingOrderId === activeReceiptOrder.id
+                                ? 'menyimpan...'
+                                : activeReceiptOrder.rating > 0
+                                ? 'simpan perubahan ulasan'
+                                : 'kirim ulasan'}
                             </button>
-                          );
-                        })}
-                      </div>
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <input
-                          type="text"
-                          value={ratingDrafts[activeReceiptOrder.id]?.comment ?? ''}
-                          onChange={(e) =>
-                            setRatingDrafts((prev) => ({
-                              ...prev,
-                              [activeReceiptOrder.id]: {
-                                rating: prev[activeReceiptOrder.id]?.rating ?? 5,
-                                comment: e.target.value,
-                              },
-                            }))
-                          }
-                          placeholder="Tulis pengalaman pembelian Anda..."
-                          className="flex-1 px-3.5 py-2 border border-zinc-300 text-xs focus:outline-none focus:border-zinc-950"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleRatingSubmit(activeReceiptOrder)}
-                          disabled={submittingRatingOrderId === activeReceiptOrder.id}
-                          className="px-5 py-2 bg-zinc-950 text-white text-xs font-mono-code cursor-pointer lowercase"
-                        >
-                          {submittingRatingOrderId === activeReceiptOrder.id
-                            ? 'mengirim...'
-                            : 'kirim ulasan'}
-                        </button>
-                      </div>
-                    </div>
+                          </div>
+
+                          {/* Anonymous Toggle (Agus -> A**s, Avatar -> karakter pertama) */}
+                          <label className="flex flex-wrap items-center justify-between gap-2 p-3 bg-zinc-50 border border-zinc-200 rounded-lg cursor-pointer select-none">
+                            <div className="flex items-center gap-2.5 text-xs text-zinc-800">
+                              <input
+                                type="checkbox"
+                                checked={isAnonDraft}
+                                onChange={(e) =>
+                                  setRatingDrafts((prev) => ({
+                                    ...prev,
+                                    [activeReceiptOrder.id]: {
+                                      ...draft,
+                                      isAnonymous: e.target.checked,
+                                    },
+                                  }))
+                                }
+                                className="w-4 h-4 accent-zinc-950 cursor-pointer"
+                              />
+                              <span className="font-medium">
+                                Kirim sebagai Anonim (Sembunyikan nama akun)
+                              </span>
+                            </div>
+                            <span className="text-[11px] font-mono-code text-zinc-500 flex items-center gap-1.5">
+                              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white border border-zinc-300 text-[10px] font-semibold text-zinc-800">
+                                {getInitials(
+                                  isAnonDraft ? maskAnonymousBuyerName(buyerBaseName) : buyerBaseName
+                                )}
+                              </span>
+                              <span>
+                                {isAnonDraft
+                                  ? maskAnonymousBuyerName(buyerBaseName)
+                                  : buyerBaseName}
+                              </span>
+                            </span>
+                          </label>
+                        </div>
+                      );
+                    })()
                   )}
                 </div>
 
@@ -4544,7 +4918,19 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 text-xs font-mono-code">
                         <span className="text-zinc-500">{refundEligibility.label}</span>
 
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-wrap items-center gap-4">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (order.rating > 0) {
+                                handleStartEditReview(order);
+                              }
+                              navigateStorePath(`/store/receipt/${order.id}`);
+                            }}
+                            className="text-zinc-950 hover:underline underline-offset-4 cursor-pointer lowercase"
+                          >
+                            {order.rating > 0 ? `[★ ${order.rating}/5 · edit ulasan]` : '[★ beri ulasan]'}
+                          </button>
                           {linkedTicket ? (
                             <button
                               type="button"
@@ -4603,25 +4989,60 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
             ) : (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {displayedGlobalReviews.map((rev) => (
-                    <div
-                      key={rev.id}
-                      className="border border-zinc-200 p-5 space-y-2.5 bg-zinc-50/40"
-                    >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-medium text-zinc-950">{rev.buyerName}</span>
-                        <span className="font-mono-code text-zinc-900 bg-white px-2 py-0.5 border border-zinc-200">
-                          {'★'.repeat(Math.max(1, Math.min(5, rev.rating)))} ({rev.rating}/5)
-                        </span>
+                  {displayedGlobalReviews.map((rev) => {
+                    const isAnon = isAnonymousReviewRecord(rev);
+                    const displayReviewerName = isAnon
+                      ? maskAnonymousBuyerName(rev.buyerName)
+                      : rev.buyerName;
+                    const revTags = parseReviewTags(rev.reviewTagsJson);
+                    const cleanComment = rev.comment ? censorToxicWords(rev.comment) : '';
+                    return (
+                      <div
+                        key={rev.id}
+                        className="border border-zinc-200 rounded-xl p-5 space-y-2.5 bg-white"
+                      >
+                        <div className="flex items-center justify-between gap-2 text-xs">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="w-8 h-8 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-xs font-semibold text-zinc-800 shrink-0">
+                              {getInitials(displayReviewerName)}
+                            </span>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="font-semibold text-zinc-950 truncate">
+                                {displayReviewerName}
+                              </span>
+                              <span className="text-zinc-300">|</span>
+                              <span className="text-amber-500 shrink-0">
+                                {'★'.repeat(Math.max(1, Math.min(5, rev.rating)))}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[11px] text-zinc-400 shrink-0">
+                            {formatShortDate(rev.createdAtMs || 0)}
+                          </span>
+                        </div>
+                        <div className="text-[11px] font-mono-code text-zinc-400">
+                          Produk: {rev.productTitle}
+                        </div>
+                        {revTags.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 pt-0.5">
+                            {revTags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="px-3 py-1 rounded-full bg-zinc-100 text-zinc-700 text-[11px] font-normal"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {cleanComment && (
+                          <p className="text-xs sm:text-sm text-zinc-700 font-light leading-relaxed pt-1">
+                            &ldquo;{cleanComment}&rdquo;
+                          </p>
+                        )}
                       </div>
-                      <div className="text-[11px] font-mono-code text-zinc-400">
-                        Produk: {rev.productTitle}
-                      </div>
-                      <p className="text-xs sm:text-sm text-zinc-700 font-light leading-relaxed pt-1">
-                        &ldquo;{censorToxicWords(rev.comment)}&rdquo;
-                      </p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {reviews.length > globalReviewLimit && (
@@ -7303,6 +7724,95 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
           </div>
         )}
       </div>
+
+      {/* Mandatory Login Overlay Modal when guest tries to buy / checkout */}
+      {loginPromptAction && (
+        <div
+          className="fixed inset-0 z-50 bg-zinc-950/60 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => {
+            if (!isSigningInFromModal) {
+              setLoginPromptAction(null);
+              setPendingRestockProduct(null);
+            }
+          }}
+        >
+          <div
+            className="bg-white border border-zinc-200 rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-xl space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="w-11 h-11 rounded-xl bg-zinc-950 text-white flex items-center justify-center shrink-0">
+                <Lock size={20} />
+              </div>
+              <button
+                type="button"
+                disabled={isSigningInFromModal}
+                onClick={() => {
+                  setLoginPromptAction(null);
+                  setPendingRestockProduct(null);
+                }}
+                aria-label="Tutup modal login"
+                className="w-8 h-8 rounded-lg border border-zinc-200 text-zinc-500 hover:text-zinc-950 hover:border-zinc-950 flex items-center justify-center cursor-pointer disabled:opacity-40"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-zinc-950">
+                Masuk Diperlukan untuk Melanjutkan Pembelian
+              </h3>
+              <p className="text-xs sm:text-sm text-zinc-600 font-light leading-relaxed">
+                {loginPromptAction === 'restock_alert'
+                  ? 'Silakan masuk dengan akun Google Anda agar kami dapat menyimpan langganan notifikasi restock produk ini.'
+                  : 'Anda wajib masuk dengan akun Google terlebih dahulu sebelum membeli, agar invoice, kredensial produk otomatis, dan klaim garansi tersimpan aman ke akun Anda.'}
+              </p>
+            </div>
+
+            {(selectedProduct || activeProduct) && loginPromptAction !== 'restock_alert' && (
+              <div className="p-3.5 rounded-xl bg-zinc-50 border border-zinc-200 flex items-center justify-between gap-3 text-xs">
+                <div className="min-w-0">
+                  <div className="font-semibold text-zinc-950 truncate">
+                    {(selectedProduct || activeProduct)?.title}
+                  </div>
+                  {selectedVariant && (
+                    <div className="text-[11px] text-zinc-500 truncate mt-0.5">
+                      {selectedVariant.label} · {selectedVariant.durationLabel}
+                    </div>
+                  )}
+                </div>
+                {selectedVariant && (
+                  <span className="font-mono-code font-semibold text-zinc-950 shrink-0 tabular-nums">
+                    {formatRupiah(selectedVariant.price)}
+                  </span>
+                )}
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={handleConfirmLoginFromOverlay}
+                disabled={isSigningInFromModal}
+                className="flex-1 py-3 px-4 rounded-xl bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-mono-code uppercase tracking-wider transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {isSigningInFromModal ? 'Membuka Login Google...' : 'Masuk dengan Google'}
+              </button>
+              <button
+                type="button"
+                disabled={isSigningInFromModal}
+                onClick={() => {
+                  setLoginPromptAction(null);
+                  setPendingRestockProduct(null);
+                }}
+                className="py-3 px-4 rounded-xl border border-zinc-200 hover:border-zinc-950 text-zinc-700 text-xs font-mono-code lowercase transition-colors cursor-pointer disabled:opacity-40"
+              >
+                nanti saja
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
