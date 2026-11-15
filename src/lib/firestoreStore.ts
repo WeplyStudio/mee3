@@ -476,7 +476,9 @@ if (typeof window !== 'undefined') {
 const ID_REGEX = /^[a-zA-Z0-9_\-]+$/;
 
 export function sanitizeId(raw: string): string {
-  const cleaned = raw.replace(/[^a-zA-Z0-9_\-]/g, '_').slice(0, 128);
+  const cleaned = String(raw ?? '')
+    .replace(/[^a-zA-Z0-9_\-]/g, '_')
+    .slice(0, 128);
   return cleaned.length > 0 && ID_REGEX.test(cleaned) ? cleaned : `id_${Date.now()}`;
 }
 

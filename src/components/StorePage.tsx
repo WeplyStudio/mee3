@@ -1290,8 +1290,12 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
   const deliverPurchasedItem = async (overrideUser?: User) => {
     const targetProd = selectedProduct || activeProduct;
     if (!targetProd || !selectedVariant) return;
-    const activeUser = overrideUser || currentUser;
-    if (!activeUser) {
+    const validOverride =
+      overrideUser && typeof (overrideUser as unknown as { uid?: unknown }).uid === 'string'
+        ? overrideUser
+        : undefined;
+    const activeUser = validOverride || currentUser;
+    if (!activeUser || !activeUser.uid) {
       setLoginPromptAction('complete_purchase');
       return;
     }
@@ -4276,7 +4280,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                     {adminMode && (
                       <button
                         type="button"
-                        onClick={deliverPurchasedItem}
+                        onClick={() => deliverPurchasedItem()}
                         disabled={isCompletingPayment}
                         className="text-xs font-mono-code text-blue-600 hover:text-blue-800 underline underline-offset-4 cursor-pointer lowercase"
                       >
