@@ -2,7 +2,7 @@
   "entities": {
     "StoreProduct": {
       "title": "StoreProduct",
-      "description": "Digital product available in /store with variations, delivery type (account or redeem code), and custom usage instructions",
+      "description": "Digital product available in /store with variations, delivery type (account, redeem code, or invite link), and custom usage instructions",
       "type": "object",
       "properties": {
         "title": {
@@ -57,6 +57,10 @@
           "type": "number",
           "description": "Total number of customer ratings"
         },
+        "soldCount": {
+          "type": "number",
+          "description": "Total units sold for this product (incremented automatically upon purchase)"
+        },
         "badge": {
           "type": "string",
           "description": "Highlight label such as Best Seller or Instant",
@@ -92,7 +96,7 @@
     },
     "StoreStockItem": {
       "title": "StoreStockItem",
-      "description": "Individual account credential (email & password) or redeem code bound to a product and specific variation",
+      "description": "Individual account credential, redeem code, or reusable multi-stock invite link bound to a product and specific variation",
       "type": "object",
       "properties": {
         "productId": {
@@ -123,13 +127,13 @@
         },
         "accountEmail": {
           "type": "string",
-          "description": "Account login email/username OR redeem code/voucher key",
+          "description": "Account login email/username, redeem code/voucher key, OR invite/access link URL",
           "minLength": 1,
-          "maxLength": 180
+          "maxLength": 500
         },
         "accountPassword": {
           "type": "string",
-          "description": "Account password (empty string when item is a redeem code)",
+          "description": "Account password (empty string when item is a redeem code or invite link)",
           "minLength": 0,
           "maxLength": 180
         },
@@ -138,6 +142,10 @@
           "description": "Additional profile PIN or usage instructions",
           "minLength": 0,
           "maxLength": 300
+        },
+        "remainingUses": {
+          "type": "number",
+          "description": "Remaining stock quota backed by this item (defaults to 1; can be 300-500+ for shared invite links)"
         },
         "status": {
           "type": "string",
@@ -255,9 +263,9 @@
         },
         "deliveredEmail": {
           "type": "string",
-          "description": "Automatically delivered account email/username OR redeem code",
+          "description": "Automatically delivered account email/username, redeem code, OR invite/access link",
           "minLength": 1,
-          "maxLength": 180
+          "maxLength": 500
         },
         "deliveredPassword": {
           "type": "string",

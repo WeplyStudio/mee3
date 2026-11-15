@@ -78,6 +78,7 @@ service cloud.firestore {
           'stockCount',
           'ratingAvg',
           'ratingCount',
+          'soldCount',
           'badge',
           'createdAt',
           'updatedAt'
@@ -89,9 +90,10 @@ service cloud.firestore {
         data.variantsJson is string && data.variantsJson.size() >= 2 && data.variantsJson.size() <= 8000 &&
         data.price is number && data.price >= 0 && data.price <= 1000000000 &&
         data.durationLabel is string && data.durationLabel.size() >= 1 && data.durationLabel.size() <= 60 &&
-        data.stockCount is number && data.stockCount >= 0 && data.stockCount <= 100000 &&
+        data.stockCount is number && data.stockCount >= 0 && data.stockCount <= 1000000 &&
         data.ratingAvg is number && data.ratingAvg >= 0 && data.ratingAvg <= 5 &&
         data.ratingCount is number && data.ratingCount >= 0 && data.ratingCount <= 1000000 &&
+        (!('soldCount' in data) || (data.soldCount is number && data.soldCount >= 0 && data.soldCount <= 100000000)) &&
         data.badge is string && data.badge.size() >= 0 && data.badge.size() <= 40 &&
         data.createdAt is timestamp &&
         data.updatedAt is timestamp;
@@ -120,6 +122,7 @@ service cloud.firestore {
           'accountEmail',
           'accountPassword',
           'accountNotes',
+          'remainingUses',
           'status',
           'buyerUid',
           'orderId',
@@ -130,9 +133,10 @@ service cloud.firestore {
         data.productTitle is string && data.productTitle.size() >= 1 && data.productTitle.size() <= 120 &&
         isValidId(data.variantId) &&
         data.variantLabel is string && data.variantLabel.size() >= 1 && data.variantLabel.size() <= 120 &&
-        data.accountEmail is string && data.accountEmail.size() >= 1 && data.accountEmail.size() <= 180 &&
+        data.accountEmail is string && data.accountEmail.size() >= 1 && data.accountEmail.size() <= 500 &&
         data.accountPassword is string && data.accountPassword.size() >= 0 && data.accountPassword.size() <= 180 &&
         data.accountNotes is string && data.accountNotes.size() >= 0 && data.accountNotes.size() <= 300 &&
+        (!('remainingUses' in data) || (data.remainingUses is number && data.remainingUses >= 0 && data.remainingUses <= 100000)) &&
         data.status is string && data.status.size() <= 20 && data.status in ['available', 'sold', 'refunded'] &&
         data.buyerUid is string && data.buyerUid.size() >= 0 && data.buyerUid.size() <= 128 &&
         data.orderId is string && data.orderId.size() >= 0 && data.orderId.size() <= 128 &&
@@ -206,7 +210,7 @@ service cloud.firestore {
         data.paymentMethod is string && data.paymentMethod.size() >= 1 && data.paymentMethod.size() <= 60 &&
         data.status is string && data.status.size() <= 30 && data.status in ['paid', 'refund_requested', 'refunded', 'refund_rejected'] &&
         isValidId(data.stockId) &&
-        data.deliveredEmail is string && data.deliveredEmail.size() >= 1 && data.deliveredEmail.size() <= 180 &&
+        data.deliveredEmail is string && data.deliveredEmail.size() >= 1 && data.deliveredEmail.size() <= 500 &&
         data.deliveredPassword is string && data.deliveredPassword.size() >= 0 && data.deliveredPassword.size() <= 180 &&
         data.deliveredNotes is string && data.deliveredNotes.size() >= 0 && data.deliveredNotes.size() <= 300 &&
         data.usageGuide is string && data.usageGuide.size() >= 0 && data.usageGuide.size() <= 2500 &&
@@ -408,11 +412,18 @@ service cloud.firestore {
       allow update: if isVerifiedUser() && isValidId(productId) && isValidStoreProduct(incoming()) && (
         isAdmin() ||
         (
-          // Action 1: Stock adjustment during checkout
-          incoming().diff(existing()).affectedKeys().hasOnly(['stockCount', 'updatedAt']) &&
+          // Action 1: Stock & soldCount adjustment during checkout
+          incoming().diff(existing()).affectedKeys().hasOnly(['stockCount', 'soldCount', 'updatedAt']) &&
           incoming().createdAt == existing().createdAt &&
           incoming().updatedAt == request.time &&
-          incoming().stockCount == existing().stockCount - 1
+          (
+            (existing().stockCount >= 1 && incoming().stockCount == existing().stockCount - 1) ||
+            (existing().stockCount == 0 && incoming().stockCount == 0)
+          ) &&
+          (
+            (!('soldCount' in existing()) && incoming().soldCount == 1) ||
+            ('soldCount' in existing() && incoming().soldCount == existing().soldCount + 1)
+          )
         ) ||
         (
           // Action 2: Rating aggregate update after buyer submits rating
@@ -444,10 +455,13 @@ service cloud.firestore {
       allow update: if isVerifiedUser() && isValidId(stockId) && isValidStoreStockItem(incoming()) && (
         isAdmin() ||
         (
-          // Action: Claim available account stock during instant purchase
+          // Action 1: Claim single-use stock or final remaining slot during instant purchase
           existing().status == 'available' &&
           incoming().status == 'sold' &&
           incoming().buyerUid == request.auth.uid &&
+          incoming().orderId is string && incoming().orderId.size() >= 1 &&
+          (!('remainingUses' in existing()) || existing().remainingUses <= 1) &&
+          (!('remainingUses' in incoming()) || incoming().remainingUses == 0) &&
           incoming().productId == existing().productId &&
           incoming().productTitle == existing().productTitle &&
           incoming().variantId == existing().variantId &&
@@ -457,7 +471,26 @@ service cloud.firestore {
           incoming().accountNotes == existing().accountNotes &&
           incoming().createdAt == existing().createdAt &&
           incoming().updatedAt == request.time &&
-          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'buyerUid', 'orderId', 'updatedAt'])
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'buyerUid', 'orderId', 'remainingUses', 'updatedAt'])
+        ) ||
+        (
+          // Action 2: Decrement quota on a multi-stock invite link (remainingUses > 1)
+          existing().status == 'available' &&
+          incoming().status == 'available' &&
+          ('remainingUses' in existing()) && existing().remainingUses > 1 &&
+          ('remainingUses' in incoming()) && incoming().remainingUses == existing().remainingUses - 1 &&
+          incoming().buyerUid == existing().buyerUid &&
+          incoming().orderId == existing().orderId &&
+          incoming().productId == existing().productId &&
+          incoming().productTitle == existing().productTitle &&
+          incoming().variantId == existing().variantId &&
+          incoming().variantLabel == existing().variantLabel &&
+          incoming().accountEmail == existing().accountEmail &&
+          incoming().accountPassword == existing().accountPassword &&
+          incoming().accountNotes == existing().accountNotes &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['remainingUses', 'updatedAt'])
         )
       );
       allow delete: if isAdmin() && isValidId(stockId);

@@ -44,7 +44,7 @@ export const LEGACY_FAKE_PRODUCT_IDS = [
 ];
 
 export type WijayapayMethodCode = 'QRIS' | 'BCAVA' | 'BNIVA' | 'ALFAMART' | 'INDOMARET';
-export type ProductDeliveryType = 'account' | 'redeem';
+export type ProductDeliveryType = 'account' | 'redeem' | 'link';
 export type RefundSolutionType = 'refund_money' | 'replace_item';
 export type RefundTicketStatus = 'open' | 'approved_refund' | 'approved_replace' | 'rejected';
 
@@ -189,6 +189,7 @@ export interface StructuredStockRowInput {
   accountEmail: string;
   accountPassword: string;
   accountNotes: string;
+  quantity?: number;
 }
 
 export interface RefundChatMessage {
@@ -497,12 +498,28 @@ export interface StoreProductRecord {
   stockCount: number;
   ratingAvg: number;
   ratingCount: number;
+  soldCount?: number;
   badge: string;
   iconUrl?: string;
   benefitsText?: string;
   faqs?: ProductFaqItem[];
   createdAt?: Timestamp | null;
   updatedAt?: Timestamp | null;
+}
+
+export function formatSoldCount(rawCount: number): string {
+  const count = Math.max(0, Math.floor(Number(rawCount) || 0));
+  if (count >= 100000) {
+    return '100K+';
+  }
+  if (count >= 1000) {
+    const compact = (Math.floor(count / 100) / 10)
+      .toString()
+      .replace(/\.0$/, '')
+      .replace('.', ',');
+    return `${compact}K`;
+  }
+  return String(count);
 }
 
 export interface StoreStockItemRecord {
@@ -514,6 +531,7 @@ export interface StoreStockItemRecord {
   accountEmail: string;
   accountPassword: string;
   accountNotes: string;
+  remainingUses?: number;
   status: 'available' | 'sold' | 'refunded';
   buyerUid: string;
   orderId: string;
@@ -698,14 +716,18 @@ export function getDefaultProductTemplate(
     benefitsText:
       `Akses Fitur Premium Penuh | Nikmati seluruh fitur eksklusif ${cleanName} tanpa batas sesuai variasi paket yang dipilih.\n` +
       `Pengiriman Otomatis Instan | ${
-        deliveryType === 'redeem'
+        deliveryType === 'link'
+          ? 'Link invite / tautan akses langsung dikirim otomatis di halaman receipt begitu pembayaran berhasil.'
+          : deliveryType === 'redeem'
           ? 'Kode redeem langsung dikirim otomatis di halaman receipt begitu pembayaran berhasil.'
           : 'Kredensial akun (Email & Password) langsung tampil otomatis di halaman receipt setelah pembayaran berhasil.'
       }\n` +
       `Panduan Penggunaan Lengkap | Dilengkapi langkah-langkah aktivasi dan penggunaan agar mudah dipakai oleh siapa saja.\n` +
       `Jaminan Garansi Penuh 3 Hari | Jaminan penggantian produk baru atau pengembalian dana penuh jika terdapat kendala.`,
     usageGuide:
-      deliveryType === 'redeem'
+      deliveryType === 'link'
+        ? `1. Klik tombol "Buka Link" atau salin link undangan ${cleanName} yang tampil di halaman receipt.\n2. Masuk menggunakan akun pribadi Anda jika diminta oleh sistem.\n3. Terima undangan tim / akses pro hingga status akun aktif sepenuhnya.`
+        : deliveryType === 'redeem'
         ? `1. Salin kode redeem ${cleanName} yang tampil di halaman receipt.\n2. Buka halaman atau menu Redeem pada aplikasi/website resmi.\n3. Tempelkan kode redeem dan konfirmasi hingga paket aktif.`
         : `1. Buka aplikasi atau website resmi ${cleanName}.\n2. Masuk menggunakan Email dan Password akun yang tampil di halaman receipt.\n3. Gunakan sesuai ketentuan variasi dan jangan mengubah pengaturan keamanan akun agar garansi tetap berlaku.`,
   };
@@ -762,11 +784,15 @@ export function parseBenefitsText(
     },
     {
       title:
-        deliveryType === 'redeem'
+        deliveryType === 'link'
+          ? 'Pengiriman Instan Link Invite / Tautan Akses'
+          : deliveryType === 'redeem'
           ? 'Pengiriman Instan Kode Redeem / Voucher'
           : 'Pengiriman Instan Akun (Email & Password)',
       desc:
-        deliveryType === 'redeem'
+        deliveryType === 'link'
+          ? 'Link invite / akses produk langsung tampil otomatis di halaman receipt dan dapat langsung diklik.'
+          : deliveryType === 'redeem'
           ? 'Kode redeem langsung tampil otomatis di halaman receipt begitu pembayaran terverifikasi.'
           : 'Informasi kredensial email & password akun langsung tampil otomatis di halaman receipt setelah pembayaran berhasil.',
     },
@@ -892,7 +918,12 @@ export function getVariantsForProduct(product: {
             ),
             price: cleanPrice,
             ...(cleanOrig > cleanPrice ? { originalPrice: cleanOrig } : {}),
-            deliveryType: v.deliveryType === 'redeem' ? 'redeem' : 'account',
+            deliveryType:
+              v.deliveryType === 'redeem'
+                ? 'redeem'
+                : v.deliveryType === 'link'
+                ? 'link'
+                : 'account',
             iconUrl: v.iconUrl ? normalizeTheSvgIconUrl(String(v.iconUrl)) : undefined,
             benefitsText: v.benefitsText ? String(v.benefitsText) : undefined,
             ...(parsedFaqs && parsedFaqs.length > 0 ? { faqs: parsedFaqs } : {}),
@@ -971,7 +1002,8 @@ export function getProductDeliveryType(product: {
   price: number;
 }): ProductDeliveryType {
   const vars = getVariantsForProduct(product);
-  return vars[0]?.deliveryType === 'redeem' ? 'redeem' : 'account';
+  const dt = vars[0]?.deliveryType;
+  return dt === 'redeem' ? 'redeem' : dt === 'link' ? 'link' : 'account';
 }
 
 export function getProductFaqs(product: {
@@ -1059,6 +1091,7 @@ export function subscribeStoreProducts(
             stockCount: Number(raw.stockCount || 0),
             ratingAvg: Number(raw.ratingAvg ?? 5),
             ratingCount: Number(raw.ratingCount || 0),
+            soldCount: Math.max(0, Number(raw.soldCount || 0)),
             badge: String(raw.badge || ''),
             createdAt: raw.createdAt || null,
             updatedAt: raw.updatedAt || null,
@@ -1229,6 +1262,12 @@ export function subscribeAdminStock(onData: (stock: StoreStockItemRecord[]) => v
             accountEmail: String(raw.accountEmail || ''),
             accountPassword: String(raw.accountPassword || ''),
             accountNotes: String(raw.accountNotes || ''),
+            remainingUses:
+              typeof raw.remainingUses === 'number'
+                ? Math.max(0, Math.round(raw.remainingUses))
+                : raw.status === 'available'
+                ? 1
+                : 0,
             status: raw.status || 'available',
             buyerUid: String(raw.buyerUid || ''),
             orderId: String(raw.orderId || ''),
@@ -1268,9 +1307,12 @@ export function subscribeAvailableStockByVariant(
         const prodId = String(raw.productId || '');
         const varId = String(raw.variantId || 'var_reguler');
         if (!prodId || LEGACY_FAKE_PRODUCT_IDS.includes(prodId)) return;
+        const units =
+          typeof raw.remainingUses === 'number' ? Math.max(0, Math.round(raw.remainingUses)) : 1;
+        if (units <= 0) return;
         const key = `${prodId}__${varId}`;
-        counts[key] = (counts[key] || 0) + 1;
-        counts[`${prodId}__total`] = (counts[`${prodId}__total`] || 0) + 1;
+        counts[key] = (counts[key] || 0) + units;
+        counts[`${prodId}__total`] = (counts[`${prodId}__total`] || 0) + units;
       });
       onData(counts);
     },
@@ -1350,6 +1392,7 @@ export async function createStoreProduct(input: {
   stockCount?: number;
   ratingAvg?: number;
   ratingCount?: number;
+  soldCount?: number;
 }): Promise<StoreProductRecord> {
   const productId = sanitizeId(
     input.id || `prod_${input.title.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_${Date.now().toString(36)}`
@@ -1377,16 +1420,19 @@ export async function createStoreProduct(input: {
     usageGuide: clampString(
       input.usageGuide,
       2500,
-      input.deliveryType === 'redeem'
+      input.deliveryType === 'link'
+        ? '1. Klik atau buka link undangan yang tampil di halaman receipt.\n2. Masuk ke akun pribadi Anda untuk menerima akses tim/pro.'
+        : input.deliveryType === 'redeem'
         ? '1. Salin kode redeem yang diberikan di atas.\n2. Tukarkan kode pada halaman atau aplikasi resmi.'
         : '1. Masuk menggunakan email & password akun yang tertera di atas.\n2. Gunakan sesuai ketentuan variasi agar garansi tetap aktif.'
     ),
     variantsJson,
     price: Math.max(0, Math.min(1000000000, Math.round(Number(lowestVariant.price) || 0))),
     durationLabel: clampString(lowestVariant.durationLabel, 60, '30 Hari'),
-    stockCount: Math.max(0, Math.min(100000, Math.round(Number(input.stockCount) || 0))),
+    stockCount: Math.max(0, Math.min(1000000, Math.round(Number(input.stockCount) || 0))),
     ratingAvg: Math.max(0, Math.min(5, Number(input.ratingAvg ?? 5))),
     ratingCount: Math.max(0, Math.min(1000000, Math.round(Number(input.ratingCount) || 0))),
+    soldCount: Math.max(0, Math.min(100000000, Math.round(Number(input.soldCount) || 0))),
     badge: clampString(input.badge, 40, ''),
   };
 
@@ -1455,7 +1501,9 @@ export async function updateStoreProduct(
         usageGuide: clampString(
           input.usageGuide,
           2500,
-          input.deliveryType === 'redeem'
+          input.deliveryType === 'link'
+            ? '1. Klik atau buka link undangan yang tampil di halaman receipt.\n2. Masuk ke akun pribadi Anda untuk menerima akses tim/pro.'
+            : input.deliveryType === 'redeem'
             ? '1. Salin kode redeem yang diberikan di atas.\n2. Tukarkan kode pada halaman atau aplikasi resmi.'
             : '1. Masuk menggunakan email & password akun yang tertera di atas.\n2. Gunakan sesuai ketentuan variasi agar garansi tetap aktif.'
         ),
@@ -1463,9 +1511,10 @@ export async function updateStoreProduct(
         price: Math.max(0, Math.min(1000000000, Math.round(Number(lowestVariant.price) || 0))),
         durationLabel: clampString(lowestVariant.durationLabel, 60, '30 Hari'),
         badge: clampString(input.badge, 40, ''),
-        stockCount: Math.max(0, Math.min(100000, Math.round(Number(existingData.stockCount) || 0))),
+        stockCount: Math.max(0, Math.min(1000000, Math.round(Number(existingData.stockCount) || 0))),
         ratingAvg: Math.max(0, Math.min(5, Number(existingData.ratingAvg ?? 5))),
         ratingCount: Math.max(0, Math.min(1000000, Math.round(Number(existingData.ratingCount) || 0))),
+        soldCount: Math.max(0, Math.min(100000000, Math.round(Number(existingData.soldCount) || 0))),
       };
       await updateDoc(prodRef, {
         ...updatedFields,
@@ -1509,19 +1558,24 @@ export async function deleteStoreProduct(productId: string): Promise<void> {
   }
 }
 
-// Admin: Add Single Stock Item Bound to Specific Product & Variation
+// Admin: Add Stock Item (single or multi-use link quota) Bound to Specific Product & Variation
 export async function addAdminStockAccount(input: {
   product: StoreProductRecord;
   variant?: ProductVariantOption;
   accountEmail: string;
   accountPassword: string;
   accountNotes: string;
+  remainingUses?: number;
 }): Promise<void> {
   const cleanProductId = sanitizeId(input.product.id);
   const variants = getVariantsForProduct(input.product);
   const targetVariant = input.variant || variants[0];
   const cleanVariantId = sanitizeId(targetVariant?.id || 'var_reguler');
   const cleanVariantLabel = clampString(targetVariant?.label || 'Paket Reguler', 120, 'Paket Reguler');
+  const cleanRemainingUses = Math.max(
+    1,
+    Math.min(100000, Math.round(Number(input.remainingUses) || 1))
+  );
 
   const stockId = sanitizeId(`stk_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`);
   const stockPath = `storeStock/${stockId}`;
@@ -1546,9 +1600,10 @@ export async function addAdminStockAccount(input: {
       productTitle: clampString(input.product.title, 120, 'Produk'),
       variantId: cleanVariantId,
       variantLabel: cleanVariantLabel,
-      accountEmail: clampString(input.accountEmail, 180),
+      accountEmail: clampString(input.accountEmail, 500),
       accountPassword: clampString(input.accountPassword, 180),
       accountNotes: clampString(input.accountNotes, 300, ''),
+      remainingUses: cleanRemainingUses,
       status: 'available',
       buyerUid: '',
       orderId: '',
@@ -1577,7 +1632,7 @@ export async function addAdminStockAccount(input: {
       ratingAvg: Number(existingData?.ratingAvg ?? input.product.ratingAvg ?? 5),
       ratingCount: Number(existingData?.ratingCount ?? input.product.ratingCount ?? 0),
       createdAt: existingData?.createdAt || serverTimestamp(),
-      stockCount: currentStock + 1,
+      stockCount: Math.min(1000000, currentStock + cleanRemainingUses),
       updatedAt: serverTimestamp(),
     });
   } catch (error) {
@@ -1608,18 +1663,23 @@ export async function addAdminStockAccount(input: {
   }
 }
 
-// Admin: Upload Structured Multi-Row Stock Items for a Product + Variation
+// Admin: Upload Structured Multi-Row Stock Items (accounts, redeem codes, or multi-stock links)
 export async function addBatchStructuredStockRows(input: {
   product: StoreProductRecord;
   variant: ProductVariantOption;
   deliveryType: ProductDeliveryType;
   rows: StructuredStockRowInput[];
-}): Promise<number> {
-  let added = 0;
+}): Promise<{ docsAdded: number; unitsAdded: number }> {
+  let docsAdded = 0;
+  let unitsAdded = 0;
   for (const row of input.rows) {
     const mainVal = (row.accountEmail || '').trim();
-    const passVal = input.deliveryType === 'redeem' ? '' : (row.accountPassword || '').trim();
+    const passVal = input.deliveryType === 'account' ? (row.accountPassword || '').trim() : '';
     const notesVal = (row.accountNotes || '').trim();
+    const qtyVal =
+      input.deliveryType === 'link'
+        ? Math.max(1, Math.min(100000, Math.round(Number(row.quantity) || 1)))
+        : 1;
     if (!mainVal) continue;
     if (input.deliveryType === 'account' && !passVal) continue;
 
@@ -1629,10 +1689,12 @@ export async function addBatchStructuredStockRows(input: {
       accountEmail: mainVal,
       accountPassword: passVal,
       accountNotes: notesVal,
+      remainingUses: qtyVal,
     });
-    added++;
+    docsAdded++;
+    unitsAdded += qtyVal;
   }
-  return added;
+  return { docsAdded, unitsAdded };
 }
 
 // Admin: Delete Available Stock Item
@@ -1641,11 +1703,15 @@ export async function deleteAdminStockAccount(stock: StoreStockItemRecord): Prom
   try {
     await deleteDoc(doc(db, 'storeStock', stock.id));
     if (stock.status === 'available') {
+      const unitsToRemove =
+        typeof stock.remainingUses === 'number'
+          ? Math.max(0, Math.round(stock.remainingUses))
+          : 1;
       const prodRef = doc(db, 'storeProducts', stock.productId);
       const prodSnap = await getDoc(prodRef);
       if (prodSnap.exists()) {
         const existingData = prodSnap.data();
-        const currentStock = Math.max(0, Number(existingData.stockCount || 0) - 1);
+        const currentStock = Math.max(0, Number(existingData.stockCount || 0) - unitsToRemove);
         await updateDoc(prodRef, {
           title: clampString(existingData.title, 120, 'Produk'),
           category: clampString(existingData.category, 60, 'Premium'),
@@ -1809,10 +1875,14 @@ export async function purchaseProductAutomatically(input: {
       where('status', '==', 'available')
     );
     const snap = await getDocs(q);
-    const exactVariantDocs = snap.docs.filter(
+    const usableDocs = snap.docs.filter((d) => {
+      const rem = d.data().remainingUses;
+      return typeof rem === 'number' ? rem > 0 : true;
+    });
+    const exactVariantDocs = usableDocs.filter(
       (d) => String(d.data().variantId || '') === cleanVariantId
     );
-    availableDocs = exactVariantDocs.length > 0 ? exactVariantDocs : snap.docs;
+    availableDocs = exactVariantDocs.length > 0 ? exactVariantDocs : usableDocs;
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, stockQueryPath);
   }
@@ -1833,14 +1903,26 @@ export async function purchaseProductAutomatically(input: {
   const trxReference =
     wijayapayData?.trx_reference || `TRX${Math.floor(100000 + Math.random() * 900000)}`;
   const nowMs = Date.now();
+  const currentUses =
+    typeof stockData.remainingUses === 'number'
+      ? Math.max(1, Math.round(stockData.remainingUses))
+      : 1;
 
   try {
-    await updateDoc(doc(db, 'storeStock', stockId), {
-      status: 'sold',
-      buyerUid: buyer.uid,
-      orderId,
-      updatedAt: serverTimestamp(),
-    });
+    if (currentUses > 1) {
+      await updateDoc(doc(db, 'storeStock', stockId), {
+        remainingUses: currentUses - 1,
+        updatedAt: serverTimestamp(),
+      });
+    } else {
+      await updateDoc(doc(db, 'storeStock', stockId), {
+        status: 'sold',
+        buyerUid: buyer.uid,
+        orderId,
+        ...(typeof stockData.remainingUses === 'number' ? { remainingUses: 0 } : {}),
+        updatedAt: serverTimestamp(),
+      });
+    }
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `storeStock/${stockId}`);
   }
@@ -1851,9 +1933,11 @@ export async function purchaseProductAutomatically(input: {
     if (freshProd.exists()) {
       const pData = freshProd.data();
       freshUsageGuide = String(pData.usageGuide || product.usageGuide || '');
-      const existingCount = Number(pData.stockCount || 1);
+      const existingCount = Math.max(0, Math.round(Number(pData.stockCount ?? 0)));
+      const existingSold = Math.max(0, Math.round(Number(pData.soldCount || 0)));
       await updateDoc(doc(db, 'storeProducts', product.id), {
         stockCount: Math.max(0, existingCount - 1),
+        soldCount: Math.min(100000000, existingSold + 1),
         updatedAt: serverTimestamp(),
       });
     }
@@ -1864,6 +1948,8 @@ export async function purchaseProductAutomatically(input: {
   const finalTitle = `${product.title} — ${variant.label}`;
   const finalDuration = variant.durationLabel || product.durationLabel;
   const finalPrice = wijayapayData?.total_bayar ?? variant.price ?? product.price;
+  const delivType = getProductDeliveryType(product);
+  const isLinkDelivery = delivType === 'link' || /^https?:\/\//i.test(stockData.accountEmail || '');
 
   const newOrderPayload = {
     invoiceCode: clampString(invoiceCode, 60),
@@ -1877,7 +1963,7 @@ export async function purchaseProductAutomatically(input: {
     paymentMethod: clampString(String(paymentMethod), 60, 'QRIS'),
     status: 'paid' as const,
     stockId: sanitizeId(stockId),
-    deliveredEmail: clampString(stockData.accountEmail, 180),
+    deliveredEmail: clampString(stockData.accountEmail, 500),
     deliveredPassword: clampString(stockData.accountPassword, 180),
     deliveredNotes: clampString(stockData.accountNotes || '', 300),
     usageGuide: clampString(
@@ -1885,6 +1971,8 @@ export async function purchaseProductAutomatically(input: {
       2500,
       stockData.accountPassword
         ? 'Silakan login menggunakan email dan password akun di atas.'
+        : isLinkDelivery
+        ? 'Silakan klik tombol Buka Link atau salin tautan undangan di atas untuk menerima akses produk.'
         : 'Silakan tukarkan (redeem) kode voucher di atas pada aplikasi/website resmi.'
     ),
     buyerUid: sanitizeId(buyer.uid),
@@ -2249,20 +2337,25 @@ export async function resolveRefundTicketByAdmin(input: {
         const stkSnap = await getDoc(stkRef);
         if (stkSnap.exists()) {
           const s = stkSnap.data();
-          await updateDoc(stkRef, {
-            productId: s.productId,
-            productTitle: s.productTitle,
-            variantId: s.variantId || 'var_reguler',
-            variantLabel: s.variantLabel || 'Reguler',
-            accountEmail: s.accountEmail,
-            accountPassword: s.accountPassword || '',
-            accountNotes: s.accountNotes || '',
-            buyerUid: s.buyerUid || '',
-            orderId: s.orderId || '',
-            createdAt: s.createdAt || serverTimestamp(),
-            status: 'refunded',
-            updatedAt: serverTimestamp(),
-          });
+          const hasRemainingSharedSlots =
+            typeof s.remainingUses === 'number' && s.remainingUses > 0 && s.status === 'available';
+          if (!hasRemainingSharedSlots) {
+            await updateDoc(stkRef, {
+              productId: s.productId,
+              productTitle: s.productTitle,
+              variantId: s.variantId || 'var_reguler',
+              variantLabel: s.variantLabel || 'Reguler',
+              accountEmail: s.accountEmail,
+              accountPassword: s.accountPassword || '',
+              accountNotes: s.accountNotes || '',
+              ...(typeof s.remainingUses === 'number' ? { remainingUses: s.remainingUses } : {}),
+              buyerUid: s.buyerUid || '',
+              orderId: s.orderId || '',
+              createdAt: s.createdAt || serverTimestamp(),
+              status: 'refunded',
+              updatedAt: serverTimestamp(),
+            });
+          }
         }
       }
     }

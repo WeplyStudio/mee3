@@ -5,10 +5,12 @@ import {
   Check,
   ChevronDown,
   Copy,
+  ExternalLink,
   Eye,
   EyeOff,
   HelpCircle,
   Image as ImageIcon,
+  Link2,
   Lock,
   MessageSquare,
   Package,
@@ -62,6 +64,7 @@ import {
   getProductBenefits,
   getProductBenefitsText,
   parseBenefitsText,
+  formatSoldCount,
   normalizeTheSvgIconUrl,
   inferTheSvgIconFromTitle,
   parseTicketProofImages,
@@ -137,6 +140,17 @@ interface StockDraftRow {
   accountEmail: string;
   accountPassword: string;
   accountNotes: string;
+  quantity: string;
+}
+
+function isUrlLike(value: string): boolean {
+  return /^https?:\/\//i.test(String(value || '').trim());
+}
+
+function normalizeExternalUrl(value: string): string {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return '#';
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
 interface BenefitDraftRow {
@@ -177,6 +191,7 @@ function createEmptyStockDraftRow(): StockDraftRow {
     accountEmail: '',
     accountPassword: '',
     accountNotes: '',
+    quantity: '1',
   };
 }
 
@@ -920,6 +935,19 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
     return Array.from(set);
   }, [products]);
 
+  const reviewCountByProduct = useMemo(() => {
+    const map: Record<string, number> = {};
+    reviews.forEach((r) => {
+      if (r.productId) {
+        map[r.productId] = (map[r.productId] || 0) + 1;
+      }
+    });
+    return map;
+  }, [reviews]);
+
+  const getProductSoldCount = (p: StoreProductRecord): number =>
+    Math.max(Number(p.soldCount || 0), Number(p.ratingCount || 0), reviewCountByProduct[p.id] || 0);
+
   const filteredProducts = useMemo(() => {
     const matched = products.filter((p) => {
       const matchesCat =
@@ -941,18 +969,11 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
       return Math.max(0, Number(p.price) || 0);
     };
 
-    const reviewCountByProd: Record<string, number> = {};
-    reviews.forEach((r) => {
-      if (r.productId) {
-        reviewCountByProd[r.productId] = (reviewCountByProd[r.productId] || 0) + 1;
-      }
-    });
-
     const sorted = [...matched];
     if (productSort === 'bestseller') {
       sorted.sort((a, b) => {
-        const salesA = Math.max(a.ratingCount || 0, reviewCountByProd[a.id] || 0);
-        const salesB = Math.max(b.ratingCount || 0, reviewCountByProd[b.id] || 0);
+        const salesA = getProductSoldCount(a);
+        const salesB = getProductSoldCount(b);
         if (salesB !== salesA) return salesB - salesA;
         const bestBadgeA = (a.badge || '').toLowerCase().includes('best') ? 1 : 0;
         const bestBadgeB = (b.badge || '').toLowerCase().includes('best') ? 1 : 0;
@@ -1482,7 +1503,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
   const handleUpdateVariantStockRow = (
     variantDraftId: string,
     stockRowId: string,
-    field: keyof StructuredStockRowInput,
+    field: 'accountEmail' | 'accountPassword' | 'accountNotes' | 'quantity',
     value: string
   ) => {
     setVariantDrafts((prev) =>
@@ -1617,6 +1638,17 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
       type: 'success',
       text: `Template berhasil diterapkan${newProdTitle.trim() ? ` untuk "${newProdTitle.trim()}"` : ''}. Tinggal sesuaikan poin benefit & harga sesuai kebutuhan.`,
     });
+  };
+
+  const handleSelectDeliveryType = (targetDeliv: ProductDeliveryType) => {
+    uiSfx.playClick();
+    setNewProdDeliveryType(targetDeliv);
+    if (!editingProductId && isTemplateAutoSync) {
+      const tpl = getDefaultProductTemplate(newProdTitle, targetDeliv);
+      setNewProdDesc(tpl.description);
+      setBenefitDrafts(parseTemplateToBenefitRows(tpl.benefitsText));
+      setNewProdUsageGuide(tpl.usageGuide);
+    }
   };
 
   // Admin: Start Editing Product -> Navigates to /new/product
@@ -1760,18 +1792,23 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
       }
 
       // Upload structured stock rows entered inside each variation
-      let totalUploadedItems = 0;
+      let totalUploadedUnits = 0;
       for (let i = 0; i < variantDrafts.length; i++) {
         const draftRow = variantDrafts[i];
         const targetVar = cleanVariants[i];
         if (draftRow.stockRows.length > 0 && targetVar) {
-          const count = await addBatchStructuredStockRows({
+          const result = await addBatchStructuredStockRows({
             product: savedProduct,
             variant: targetVar,
             deliveryType: newProdDeliveryType,
-            rows: draftRow.stockRows,
+            rows: draftRow.stockRows.map((sRow) => ({
+              accountEmail: sRow.accountEmail,
+              accountPassword: sRow.accountPassword,
+              accountNotes: sRow.accountNotes,
+              quantity: Math.max(1, Math.min(100000, Math.round(Number(sRow.quantity) || 1))),
+            })),
           });
-          totalUploadedItems += count;
+          totalUploadedUnits += result.unitsAdded;
         }
       }
 
@@ -1782,10 +1819,10 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
 
       const successMsg = editingProductId
         ? `Produk "${savedProduct.title}" berhasil diperbarui${
-            totalUploadedItems > 0 ? ` (+${totalUploadedItems} stok baru)` : ''
+            totalUploadedUnits > 0 ? ` (+${totalUploadedUnits.toLocaleString('id-ID')} stok baru)` : ''
           }.`
         : `Produk "${savedProduct.title}" berhasil dibuat${
-            totalUploadedItems > 0 ? ` beserta ${totalUploadedItems} stok awal` : ''
+            totalUploadedUnits > 0 ? ` beserta ${totalUploadedUnits.toLocaleString('id-ID')} stok awal` : ''
           }.`;
 
       showToast('success', successMsg);
@@ -1985,7 +2022,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
 
   const handleUpdateStandaloneStockRow = (
     rowId: string,
-    field: keyof StructuredStockRowInput,
+    field: 'accountEmail' | 'accountPassword' | 'accountNotes' | 'quantity',
     value: string
   ) => {
     setStandaloneStockRows((prev) =>
@@ -2018,7 +2055,9 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
     if (validRows.length === 0) {
       showToast(
         'error',
-        delivType === 'redeem'
+        delivType === 'link'
+          ? 'Isi minimal 1 baris Link Invite / Tautan Akses.'
+          : delivType === 'redeem'
           ? 'Isi minimal 1 baris Kode Redeem.'
           : 'Isi minimal 1 baris Email & Password akun.'
       );
@@ -2027,18 +2066,25 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
 
     setIsSavingStock(true);
     try {
-      const addedCount = await addBatchStructuredStockRows({
+      const result = await addBatchStructuredStockRows({
         product: targetProduct,
         variant: targetVariant,
         deliveryType: delivType,
-        rows: validRows,
+        rows: validRows.map((r) => ({
+          accountEmail: r.accountEmail,
+          accountPassword: r.accountPassword,
+          accountNotes: r.accountNotes,
+          quantity: Math.max(1, Math.min(100000, Math.round(Number(r.quantity) || 1))),
+        })),
       });
       setStandaloneStockRows([createEmptyStockDraftRow()]);
       showToast(
         'success',
-        `Berhasil menambahkan ${addedCount} stok ${
-          delivType === 'redeem' ? 'kode redeem' : 'akun'
-        } ke variasi "${targetVariant.label}".`
+        delivType === 'link'
+          ? `Berhasil menambahkan ${result.docsAdded} link (${result.unitsAdded.toLocaleString('id-ID')} stok) ke variasi "${targetVariant.label}".`
+          : `Berhasil menambahkan ${result.unitsAdded} stok ${
+              delivType === 'redeem' ? 'kode redeem' : 'akun'
+            } ke variasi "${targetVariant.label}".`
       );
     } catch (err: any) {
       showToast('error', err?.message || 'Gagal menyimpan stok.');
@@ -2096,7 +2142,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                   Digital Store
                 </h1>
                 <p className="text-xs sm:text-sm text-zinc-500 max-w-3xl font-light leading-relaxed">
-                  Layanan produk digital dengan verifikasi pembayaran otomatis (QRIS, BCA/BNI Virtual Account, Alfamart, Indomaret), pengiriman instan akun maupun kode redeem, serta jaminan garansi resmi 3 hari.
+                  Layanan produk digital dengan verifikasi pembayaran otomatis (QRIS, BCA/BNI Virtual Account, Alfamart, Indomaret), pengiriman instan akun, kode redeem, maupun link invite, serta jaminan garansi resmi 3 hari.
                 </p>
               </div>
 
@@ -2399,7 +2445,12 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                       <div className="space-y-4">
                         <div className="flex items-center justify-between gap-2 text-[11px] font-mono-code">
                           <span className="text-zinc-500 lowercase truncate">
-                            {product.category} · {delivType === 'redeem' ? 'kode redeem' : 'akun'}
+                            {product.category} ·{' '}
+                            {delivType === 'link'
+                              ? 'link invite'
+                              : delivType === 'redeem'
+                              ? 'kode redeem'
+                              : 'akun'}
                             {product.badge ? ` · ${product.badge}` : ''}
                           </span>
                           <span
@@ -2429,6 +2480,19 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                                   -{maxDiscountPct}%
                                 </span>
                               )}
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] font-mono-code text-zinc-500 mt-1">
+                              <span className="inline-flex items-center gap-1 font-medium text-amber-600">
+                                <Star size={11} className="fill-amber-500 text-amber-500" />
+                                {(product.ratingAvg && product.ratingAvg > 0
+                                  ? product.ratingAvg
+                                  : 5
+                                ).toFixed(1)}
+                              </span>
+                              <span>·</span>
+                              <span className="text-zinc-700 font-medium">
+                                {formatSoldCount(getProductSoldCount(product))} terjual
+                              </span>
                             </div>
                             <p className="text-xs text-zinc-500 font-light leading-relaxed mt-1.5 line-clamp-2">
                               {product.description}
@@ -2589,10 +2653,11 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                   activeProduct.ratingAvg && activeProduct.ratingAvg > 0
                     ? activeProduct.ratingAvg.toFixed(1)
                     : '5.0';
-                const soldCount = Math.max(
+                const reviewCount = Math.max(
                   productReviews.length,
                   activeProduct.ratingCount || 0
                 );
+                const soldCount = getProductSoldCount(activeProduct);
                 const existingAlert = currentUser
                   ? restockAlerts.find(
                       (a) =>
@@ -2638,14 +2703,18 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                             <h2 className="text-xl font-semibold text-zinc-950 tracking-tight">
                               {activeProduct.title}
                             </h2>
-                            <div className="flex items-center gap-2 text-xs text-zinc-600">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-600">
                               <span className="inline-flex items-center gap-1 font-medium text-amber-600">
                                 <Star size={13} className="fill-amber-500 text-amber-500" />
                                 {avgRating}
                               </span>
                               <span>•</span>
+                              <span className="font-medium text-zinc-900">
+                                {formatSoldCount(soldCount)} terjual
+                              </span>
+                              <span>•</span>
                               <span>
-                                {soldCount > 0 ? `${soldCount} Ulasan Terverifikasi` : 'Produk Resmi'}
+                                {reviewCount > 0 ? `${reviewCount} Ulasan` : 'Produk Resmi'}
                               </span>
                             </div>
                           </div>
@@ -2666,7 +2735,11 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                               Garansi 3 Hari
                             </span>
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-zinc-100 text-zinc-700 text-[11px] font-mono-code lowercase">
-                              {delivType === 'redeem' ? 'kode redeem' : 'akun email & password'}
+                              {delivType === 'link'
+                                ? 'link invite'
+                                : delivType === 'redeem'
+                                ? 'kode redeem'
+                                : 'akun email & password'}
                             </span>
                           </div>
 
@@ -2844,7 +2917,9 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                             <div className="text-xs font-medium text-zinc-700">Tipe Produk</div>
                             <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 border-zinc-950 bg-zinc-50 text-xs font-semibold text-zinc-950">
                               <span>
-                                {delivType === 'redeem'
+                                {delivType === 'link'
+                                  ? 'Link Invite / Tautan Akses'
+                                  : delivType === 'redeem'
                                   ? 'Kode Redeem / Voucher'
                                   : 'Akun (Email & Password)'}
                               </span>
@@ -3327,7 +3402,9 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                               </div>
                               <div className="text-xs text-zinc-500">
                                 Tipe:{' '}
-                                {delivType === 'redeem'
+                                {delivType === 'link'
+                                  ? 'Link Invite / Tautan Akses'
+                                  : delivType === 'redeem'
                                   ? 'Kode Redeem / Voucher'
                                   : 'Akun Email & Password'}
                               </div>
@@ -3972,143 +4049,180 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                   </div>
                 </div>
 
-                {/* Delivered Account (Email + Password) OR Redeem Code */}
-                <div className="bg-zinc-950 text-white p-6 space-y-5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-zinc-800">
-                    <div className="text-xs font-mono-code text-zinc-300 lowercase">
-                      {activeReceiptOrder.deliveredPassword
-                        ? '[kredensial akun (email & password)]'
-                        : '[kode redeem / voucher produk]'}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        copyToClipboard(
-                          activeReceiptOrder.deliveredPassword
-                            ? `Email: ${activeReceiptOrder.deliveredEmail}\nPassword: ${activeReceiptOrder.deliveredPassword}${
-                                activeReceiptOrder.deliveredNotes
-                                  ? `\nCatatan: ${activeReceiptOrder.deliveredNotes}`
-                                  : ''
-                              }`
-                            : `${activeReceiptOrder.deliveredEmail}${
-                                activeReceiptOrder.deliveredNotes
-                                  ? `\nCatatan: ${activeReceiptOrder.deliveredNotes}`
-                                  : ''
-                              }`,
-                          `receipt_all_${activeReceiptOrder.id}`
-                        )
-                      }
-                      className="px-3 py-1 bg-white text-zinc-950 text-xs font-mono-code cursor-pointer lowercase self-start sm:self-auto"
-                    >
-                      {copiedKey === `receipt_all_${activeReceiptOrder.id}`
-                        ? 'tersalin ✓'
-                        : activeReceiptOrder.deliveredPassword
-                        ? 'salin semua kredensial'
-                        : 'salin kode redeem'}
-                    </button>
-                  </div>
-
-                  {activeReceiptOrder.deliveredPassword ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="bg-zinc-900 border border-zinc-800 p-4 flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="text-[10px] font-mono-code text-zinc-400 lowercase">
-                            email / username akun
+                {/* Delivered Account (Email + Password) OR Redeem Code OR Invite Link */}
+                {(() => {
+                  const receiptProd = products.find((p) => p.id === activeReceiptOrder.productId);
+                  const isReceiptLink =
+                    !activeReceiptOrder.deliveredPassword &&
+                    ((receiptProd && getProductDeliveryType(receiptProd) === 'link') ||
+                      isUrlLike(activeReceiptOrder.deliveredEmail));
+                  return (
+                    <>
+                      <div className="bg-zinc-950 text-white p-6 space-y-5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-zinc-800">
+                          <div className="text-xs font-mono-code text-zinc-300 lowercase">
+                            {activeReceiptOrder.deliveredPassword
+                              ? '[kredensial akun (email & password)]'
+                              : isReceiptLink
+                              ? '[link invite / tautan akses produk]'
+                              : '[kode redeem / voucher produk]'}
                           </div>
-                          <div className="text-sm sm:text-base font-mono-code text-white truncate mt-1 select-all">
-                            {activeReceiptOrder.deliveredEmail}
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              copyToClipboard(
+                                activeReceiptOrder.deliveredPassword
+                                  ? `Email: ${activeReceiptOrder.deliveredEmail}\nPassword: ${activeReceiptOrder.deliveredPassword}${
+                                      activeReceiptOrder.deliveredNotes
+                                        ? `\nCatatan: ${activeReceiptOrder.deliveredNotes}`
+                                        : ''
+                                    }`
+                                  : `${activeReceiptOrder.deliveredEmail}${
+                                      activeReceiptOrder.deliveredNotes
+                                        ? `\nCatatan: ${activeReceiptOrder.deliveredNotes}`
+                                        : ''
+                                    }`,
+                                `receipt_all_${activeReceiptOrder.id}`
+                              )
+                            }
+                            className="px-3 py-1 bg-white text-zinc-950 text-xs font-mono-code cursor-pointer lowercase self-start sm:self-auto whitespace-nowrap"
+                          >
+                            {copiedKey === `receipt_all_${activeReceiptOrder.id}`
+                              ? 'tersalin ✓'
+                              : activeReceiptOrder.deliveredPassword
+                              ? 'salin semua kredensial'
+                              : isReceiptLink
+                              ? 'salin link'
+                              : 'salin kode redeem'}
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            copyToClipboard(
-                              activeReceiptOrder.deliveredEmail,
-                              `receipt_email_${activeReceiptOrder.id}`
-                            )
-                          }
-                          className="px-2.5 py-1 border border-zinc-700 hover:border-white text-xs font-mono-code text-zinc-200 cursor-pointer lowercase shrink-0"
-                        >
-                          {copiedKey === `receipt_email_${activeReceiptOrder.id}`
-                            ? 'copied'
-                            : 'salin'}
-                        </button>
+
+                        {activeReceiptOrder.deliveredPassword ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="bg-zinc-900 border border-zinc-800 p-4 flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="text-[10px] font-mono-code text-zinc-400 lowercase">
+                                  email / username akun
+                                </div>
+                                <div className="text-sm sm:text-base font-mono-code text-white truncate mt-1 select-all">
+                                  {activeReceiptOrder.deliveredEmail}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  copyToClipboard(
+                                    activeReceiptOrder.deliveredEmail,
+                                    `receipt_email_${activeReceiptOrder.id}`
+                                  )
+                                }
+                                className="px-2.5 py-1 border border-zinc-700 hover:border-white text-xs font-mono-code text-zinc-200 cursor-pointer lowercase shrink-0 whitespace-nowrap"
+                              >
+                                {copiedKey === `receipt_email_${activeReceiptOrder.id}`
+                                  ? 'copied'
+                                  : 'salin'}
+                              </button>
+                            </div>
+
+                            <div className="bg-zinc-900 border border-zinc-800 p-4 flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="text-[10px] font-mono-code text-zinc-400 lowercase">
+                                  password akun
+                                </div>
+                                <div className="text-sm sm:text-base font-mono-code text-white truncate mt-1 select-all">
+                                  {activeReceiptOrder.deliveredPassword}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  copyToClipboard(
+                                    activeReceiptOrder.deliveredPassword,
+                                    `receipt_pass_${activeReceiptOrder.id}`
+                                  )
+                                }
+                                className="px-2.5 py-1 border border-zinc-700 hover:border-white text-xs font-mono-code text-zinc-200 cursor-pointer lowercase shrink-0 whitespace-nowrap"
+                              >
+                                {copiedKey === `receipt_pass_${activeReceiptOrder.id}`
+                                  ? 'copied'
+                                  : 'salin'}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-zinc-900 border border-zinc-800 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="min-w-0">
+                              <div className="text-[10px] font-mono-code text-zinc-400 lowercase inline-flex items-center gap-1.5">
+                                {isReceiptLink && <Link2 size={11} />}
+                                <span>
+                                  {isReceiptLink
+                                    ? 'link invite / tautan akses produk'
+                                    : 'kode redeem / voucher / license key'}
+                                </span>
+                              </div>
+                              <div className="text-sm sm:text-base font-mono-code text-white break-all mt-1.5 select-all">
+                                {activeReceiptOrder.deliveredEmail}
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 shrink-0">
+                              {isReceiptLink && (
+                                <a
+                                  href={normalizeExternalUrl(activeReceiptOrder.deliveredEmail)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-mono-code font-medium lowercase whitespace-nowrap"
+                                >
+                                  <span>buka link</span>
+                                  <ExternalLink size={12} />
+                                </a>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  copyToClipboard(
+                                    activeReceiptOrder.deliveredEmail,
+                                    `receipt_email_${activeReceiptOrder.id}`
+                                  )
+                                }
+                                className="px-3 py-1.5 bg-white text-zinc-950 text-xs font-mono-code cursor-pointer lowercase shrink-0 whitespace-nowrap"
+                              >
+                                {copiedKey === `receipt_email_${activeReceiptOrder.id}`
+                                  ? 'tersalin ✓'
+                                  : isReceiptLink
+                                  ? 'salin link'
+                                  : 'salin kode'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {activeReceiptOrder.deliveredNotes && (
+                          <div className="bg-zinc-900 border border-zinc-800 p-3.5 text-xs text-zinc-300">
+                            <span className="font-mono-code text-zinc-400 lowercase">
+                              catatan / profil / pin:{' '}
+                            </span>
+                            <span>{activeReceiptOrder.deliveredNotes}</span>
+                          </div>
+                        )}
                       </div>
 
-                      <div className="bg-zinc-900 border border-zinc-800 p-4 flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="text-[10px] font-mono-code text-zinc-400 lowercase">
-                            password akun
-                          </div>
-                          <div className="text-sm sm:text-base font-mono-code text-white truncate mt-1 select-all">
-                            {activeReceiptOrder.deliveredPassword}
-                          </div>
+                      {/* CARA MENGGUNAKAN PRODUK (Displayed directly below credentials) */}
+                      <div className="border border-zinc-200 p-6 space-y-3 bg-zinc-50">
+                        <div className="text-xs font-mono-code text-zinc-900 uppercase tracking-wider">
+                          Cara Menggunakan Produk — {activeReceiptOrder.productTitle}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            copyToClipboard(
-                              activeReceiptOrder.deliveredPassword,
-                              `receipt_pass_${activeReceiptOrder.id}`
-                            )
-                          }
-                          className="px-2.5 py-1 border border-zinc-700 hover:border-white text-xs font-mono-code text-zinc-200 cursor-pointer lowercase shrink-0"
-                        >
-                          {copiedKey === `receipt_pass_${activeReceiptOrder.id}`
-                            ? 'copied'
-                            : 'salin'}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-zinc-900 border border-zinc-800 p-5 flex items-center justify-between gap-4">
-                      <div className="min-w-0">
-                        <div className="text-[10px] font-mono-code text-zinc-400 lowercase">
-                          kode redeem / voucher / license key
-                        </div>
-                        <div className="text-lg sm:text-xl font-mono-code text-white tracking-wider break-all mt-1 select-all">
-                          {activeReceiptOrder.deliveredEmail}
+                        <div className="text-xs sm:text-sm text-zinc-700 font-light whitespace-pre-line leading-relaxed">
+                          {activeReceiptOrder.usageGuide ||
+                            (activeReceiptOrder.deliveredPassword
+                              ? '1. Masuk menggunakan email dan password akun di atas.\n2. Gunakan sesuai variasi yang dipilih.'
+                              : isReceiptLink
+                              ? '1. Klik tombol Buka Link atau salin tautan undangan di atas.\n2. Masuk dengan akun pribadi Anda untuk menerima akses tim/pro.'
+                              : '1. Salin kode redeem di atas.\n2. Tukarkan kode pada halaman atau aplikasi resmi produk.')}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          copyToClipboard(
-                            activeReceiptOrder.deliveredEmail,
-                            `receipt_email_${activeReceiptOrder.id}`
-                          )
-                        }
-                        className="px-3 py-1.5 bg-white text-zinc-950 text-xs font-mono-code cursor-pointer lowercase shrink-0"
-                      >
-                        {copiedKey === `receipt_email_${activeReceiptOrder.id}`
-                          ? 'tersalin ✓'
-                          : 'salin kode'}
-                      </button>
-                    </div>
-                  )}
-
-                  {activeReceiptOrder.deliveredNotes && (
-                    <div className="bg-zinc-900 border border-zinc-800 p-3.5 text-xs text-zinc-300">
-                      <span className="font-mono-code text-zinc-400 lowercase">
-                        catatan / profil / pin:{' '}
-                      </span>
-                      <span>{activeReceiptOrder.deliveredNotes}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* CARA MENGGUNAKAN PRODUK (Displayed directly below credentials) */}
-                <div className="border border-zinc-200 p-6 space-y-3 bg-zinc-50">
-                  <div className="text-xs font-mono-code text-zinc-900 uppercase tracking-wider">
-                    Cara Menggunakan Produk — {activeReceiptOrder.productTitle}
-                  </div>
-                  <div className="text-xs sm:text-sm text-zinc-700 font-light whitespace-pre-line leading-relaxed">
-                    {activeReceiptOrder.usageGuide ||
-                      (activeReceiptOrder.deliveredPassword
-                        ? '1. Masuk menggunakan email dan password akun di atas.\n2. Gunakan sesuai variasi yang dipilih.'
-                        : '1. Salin kode redeem di atas.\n2. Tukarkan kode pada halaman atau aplikasi resmi produk.')}
-                  </div>
-                </div>
+                    </>
+                  );
+                })()}
 
                 {/* Rating Form on Receipt (with Toxic Filter note) */}
                 <div className="border border-zinc-200 p-6 space-y-4">
@@ -4378,25 +4492,52 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                           </div>
                         </div>
                       ) : (
-                        <div className="bg-zinc-50 border border-zinc-200 p-4 flex items-center justify-between gap-4 text-xs">
-                          <div className="min-w-0">
-                            <span className="text-zinc-400 font-mono-code block lowercase">
-                              kode redeem / voucher:
-                            </span>
-                            <span className="font-mono-code text-sm text-zinc-950 break-all block mt-0.5">
-                              {order.deliveredEmail}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              copyToClipboard(order.deliveredEmail, `hist_email_${order.id}`)
-                            }
-                            className="font-mono-code text-zinc-950 underline cursor-pointer lowercase shrink-0"
-                          >
-                            {copiedKey === `hist_email_${order.id}` ? 'copied' : 'salin kode'}
-                          </button>
-                        </div>
+                        (() => {
+                          const orderProd = products.find((p) => p.id === order.productId);
+                          const isOrderLink =
+                            (orderProd && getProductDeliveryType(orderProd) === 'link') ||
+                            isUrlLike(order.deliveredEmail);
+                          return (
+                            <div className="bg-zinc-50 border border-zinc-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                              <div className="min-w-0">
+                                <span className="text-zinc-400 font-mono-code block lowercase">
+                                  {isOrderLink
+                                    ? 'link invite / tautan akses:'
+                                    : 'kode redeem / voucher:'}
+                                </span>
+                                <span className="font-mono-code text-sm text-zinc-950 break-all block mt-0.5">
+                                  {order.deliveredEmail}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3 shrink-0">
+                                {isOrderLink && (
+                                  <a
+                                    href={normalizeExternalUrl(order.deliveredEmail)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-zinc-950 text-white font-mono-code text-xs lowercase whitespace-nowrap"
+                                  >
+                                    <span>buka link</span>
+                                    <ExternalLink size={12} />
+                                  </a>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    copyToClipboard(order.deliveredEmail, `hist_email_${order.id}`)
+                                  }
+                                  className="font-mono-code text-zinc-950 underline cursor-pointer lowercase shrink-0 whitespace-nowrap"
+                                >
+                                  {copiedKey === `hist_email_${order.id}`
+                                    ? 'copied'
+                                    : isOrderLink
+                                    ? 'salin link'
+                                    : 'salin kode'}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })()
                       )}
 
                       {/* Footer Row: Refund Cooldown/Eligibility & Ticket Link */}
@@ -4644,7 +4785,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                           refundSolutionInput === 'replace_item' ? 'text-zinc-300' : 'text-zinc-500'
                         }`}
                       >
-                        Penggantian akun atau kode redeem baru yang aktif sesuai variasi pesanan.
+                        Penggantian akun, kode redeem, atau link baru yang aktif sesuai variasi pesanan.
                       </p>
                     </button>
                   </div>
@@ -4661,7 +4802,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                     minLength={3}
                     value={refundReasonInput}
                     onChange={(e) => setRefundReasonInput(e.target.value)}
-                    placeholder="Jelaskan detail kendala pada akun atau kode redeem yang diterima..."
+                    placeholder="Jelaskan detail kendala pada akun, kode redeem, atau link invite yang diterima..."
                     className="w-full p-3.5 border border-zinc-300 focus:outline-none focus:border-zinc-950"
                   />
                 </div>
@@ -5357,7 +5498,12 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                               {/* Unboxed metadata row */}
                               <div className="flex items-center justify-between gap-2 text-[11px] font-mono-code">
                                 <span className="text-zinc-500 lowercase truncate">
-                                  {product.category} · {delivType === 'redeem' ? 'kode redeem' : 'akun'}
+                                  {product.category} ·{' '}
+                                  {delivType === 'link'
+                                    ? 'link invite'
+                                    : delivType === 'redeem'
+                                    ? 'kode redeem'
+                                    : 'akun'}
                                   {product.badge ? ` · ${product.badge}` : ''}
                                 </span>
                                 <span
@@ -5400,10 +5546,11 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                                 </div>
                               </div>
 
-                              {/* Variations & Benefit Count */}
+                              {/* Variations & Sold / Benefit Count */}
                               <div className="pt-2.5 border-t border-zinc-100 space-y-1.5">
-                                <div className="flex items-center justify-between text-[11px] font-mono-code text-zinc-400">
+                                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono-code text-zinc-400">
                                   <span>{vars.length} variasi</span>
+                                  <span>{formatSoldCount(getProductSoldCount(product))} terjual</span>
                                   <span>{prodBenefits.length} poin benefit</span>
                                 </div>
                                 <div className="flex flex-wrap gap-1.5">
@@ -5508,7 +5655,9 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                     {selectedStockProductObj && (
                       <span className="px-3 py-1 rounded-lg bg-zinc-50 border border-zinc-200 text-xs font-mono-code">
                         tipe:{' '}
-                        {selectedStockProductDeliveryType === 'redeem'
+                        {selectedStockProductDeliveryType === 'link'
+                          ? 'link invite (multi-stok per link)'
+                          : selectedStockProductDeliveryType === 'redeem'
                           ? 'kode redeem / voucher'
                           : 'akun (email & password)'}
                       </span>
@@ -5531,15 +5680,20 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                             onChange={(e) => setSelectedStockProductId(e.target.value)}
                             className="w-full px-3.5 py-2.5 rounded-lg border border-zinc-300 bg-white focus:outline-none focus:border-zinc-950"
                           >
-                            {products.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.title} — [
-                                {getProductDeliveryType(p) === 'redeem'
-                                  ? 'Kode Redeem'
-                                  : 'Email & Password'}
-                                ] (Stok: {p.stockCount})
-                              </option>
-                            ))}
+                            {products.map((p) => {
+                              const pDeliv = getProductDeliveryType(p);
+                              return (
+                                <option key={p.id} value={p.id}>
+                                  {p.title} — [
+                                  {pDeliv === 'link'
+                                    ? 'Link Invite'
+                                    : pDeliv === 'redeem'
+                                    ? 'Kode Redeem'
+                                    : 'Email & Password'}
+                                  ] (Stok: {p.stockCount})
+                                </option>
+                              );
+                            })}
                           </select>
                         </div>
 
@@ -5562,120 +5716,180 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                       </div>
 
                       {/* Structured Rows — Bulk upload */}
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-mono-code text-zinc-700">
-                            {selectedStockProductDeliveryType === 'redeem'
-                              ? `Daftar Baris Kode Redeem (${standaloneStockRows.length} Baris)`
-                              : `Daftar Baris Akun Email & Password (${standaloneStockRows.length} Baris)`}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={handleAddStandaloneStockRow}
-                            className="px-3.5 py-1.5 rounded-lg bg-zinc-50 border border-zinc-300 hover:border-zinc-950 font-mono-code text-xs text-zinc-900 cursor-pointer lowercase whitespace-nowrap"
-                          >
-                            + tambah baris (bulk upload)
-                          </button>
-                        </div>
+                      {(() => {
+                        const standaloneTotalUnits =
+                          selectedStockProductDeliveryType === 'link'
+                            ? standaloneStockRows.reduce(
+                                (sum, r) =>
+                                  sum +
+                                  Math.max(1, Math.min(100000, Math.round(Number(r.quantity) || 1))),
+                                0
+                              )
+                            : standaloneStockRows.length;
 
-                        <div className="space-y-2.5">
-                          {standaloneStockRows.map((row, idx) => (
-                            <div
-                              key={row.rowId}
-                              className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 p-3 rounded-xl bg-zinc-50 border border-zinc-200"
-                            >
-                              <span className="font-mono-code text-xs text-zinc-400 w-7 shrink-0">
-                                #{idx + 1}
-                              </span>
-
-                              {selectedStockProductDeliveryType === 'account' ? (
-                                <>
-                                  <input
-                                    type="text"
-                                    required
-                                    value={row.accountEmail}
-                                    onChange={(e) =>
-                                      handleUpdateStandaloneStockRow(
-                                        row.rowId,
-                                        'accountEmail',
-                                        e.target.value
-                                      )
-                                    }
-                                    placeholder="Email / Username Akun *"
-                                    className="flex-1 px-3 py-2 rounded-lg bg-white border border-zinc-300 focus:outline-none focus:border-zinc-950"
-                                  />
-                                  <input
-                                    type="text"
-                                    required
-                                    value={row.accountPassword}
-                                    onChange={(e) =>
-                                      handleUpdateStandaloneStockRow(
-                                        row.rowId,
-                                        'accountPassword',
-                                        e.target.value
-                                      )
-                                    }
-                                    placeholder="Password Akun *"
-                                    className="flex-1 px-3 py-2 rounded-lg bg-white border border-zinc-300 focus:outline-none focus:border-zinc-950"
-                                  />
-                                </>
-                              ) : (
-                                <input
-                                  type="text"
-                                  required
-                                  value={row.accountEmail}
-                                  onChange={(e) =>
-                                    handleUpdateStandaloneStockRow(
-                                      row.rowId,
-                                      'accountEmail',
-                                      e.target.value
-                                    )
-                                  }
-                                  placeholder="Kode Redeem / Voucher / License Key *"
-                                  className="flex-[2] px-3 py-2 rounded-lg bg-white border border-zinc-300 font-mono-code focus:outline-none focus:border-zinc-950"
-                                />
-                              )}
-
-                              <input
-                                type="text"
-                                value={row.accountNotes}
-                                onChange={(e) =>
-                                  handleUpdateStandaloneStockRow(
-                                    row.rowId,
-                                    'accountNotes',
-                                    e.target.value
-                                  )
-                                }
-                                placeholder="Catatan / Profil / PIN (Opsional)"
-                                className="flex-1 px-3 py-2 rounded-lg bg-white border border-zinc-300 focus:outline-none focus:border-zinc-950"
-                              />
-
-                              {standaloneStockRows.length > 1 && (
+                        return (
+                          <>
+                            <div className="space-y-3">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="font-mono-code text-zinc-700">
+                                  {selectedStockProductDeliveryType === 'link'
+                                    ? `Daftar Baris Link Invite (${standaloneStockRows.length} Link · Total ${standaloneTotalUnits.toLocaleString('id-ID')} Stok)`
+                                    : selectedStockProductDeliveryType === 'redeem'
+                                    ? `Daftar Baris Kode Redeem (${standaloneStockRows.length} Baris)`
+                                    : `Daftar Baris Akun Email & Password (${standaloneStockRows.length} Baris)`}
+                                </span>
                                 <button
                                   type="button"
-                                  onClick={() => handleRemoveStandaloneStockRow(row.rowId)}
-                                  className="px-2 py-1 text-red-600 hover:text-red-800 cursor-pointer self-end sm:self-center"
-                                  title="Hapus baris"
+                                  onClick={handleAddStandaloneStockRow}
+                                  className="px-3.5 py-1.5 rounded-lg bg-zinc-50 border border-zinc-300 hover:border-zinc-950 font-mono-code text-xs text-zinc-900 cursor-pointer lowercase whitespace-nowrap"
                                 >
-                                  <Trash2 size={14} />
+                                  {selectedStockProductDeliveryType === 'link'
+                                    ? '+ tambah link / stok'
+                                    : '+ tambah baris (bulk upload)'}
                                 </button>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                              </div>
 
-                      <div className="flex items-center gap-3">
-                        <button
-                          type="submit"
-                          disabled={isSavingStock || !selectedStockProductId}
-                          className="px-6 py-2.5 rounded-lg bg-zinc-950 hover:bg-zinc-800 text-white font-mono-code text-xs uppercase tracking-wider cursor-pointer disabled:opacity-50"
-                        >
-                          {isSavingStock
-                            ? 'Menyimpan Stok...'
-                            : `Simpan ${standaloneStockRows.length} Baris Stok ke Variasi Ini`}
-                        </button>
-                      </div>
+                              <div className="space-y-2.5">
+                                {standaloneStockRows.map((row, idx) => (
+                                  <div
+                                    key={row.rowId}
+                                    className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 p-3 rounded-xl bg-zinc-50 border border-zinc-200"
+                                  >
+                                    <span className="font-mono-code text-xs text-zinc-400 w-7 shrink-0">
+                                      #{idx + 1}
+                                    </span>
+
+                                    {selectedStockProductDeliveryType === 'account' ? (
+                                      <>
+                                        <input
+                                          type="text"
+                                          required
+                                          value={row.accountEmail}
+                                          onChange={(e) =>
+                                            handleUpdateStandaloneStockRow(
+                                              row.rowId,
+                                              'accountEmail',
+                                              e.target.value
+                                            )
+                                          }
+                                          placeholder="Email / Username Akun *"
+                                          className="flex-1 px-3 py-2 rounded-lg bg-white border border-zinc-300 focus:outline-none focus:border-zinc-950"
+                                        />
+                                        <input
+                                          type="text"
+                                          required
+                                          value={row.accountPassword}
+                                          onChange={(e) =>
+                                            handleUpdateStandaloneStockRow(
+                                              row.rowId,
+                                              'accountPassword',
+                                              e.target.value
+                                            )
+                                          }
+                                          placeholder="Password Akun *"
+                                          className="flex-1 px-3 py-2 rounded-lg bg-white border border-zinc-300 focus:outline-none focus:border-zinc-950"
+                                        />
+                                      </>
+                                    ) : selectedStockProductDeliveryType === 'link' ? (
+                                      <>
+                                        <input
+                                          type="text"
+                                          required
+                                          value={row.accountEmail}
+                                          onChange={(e) =>
+                                            handleUpdateStandaloneStockRow(
+                                              row.rowId,
+                                              'accountEmail',
+                                              e.target.value
+                                            )
+                                          }
+                                          placeholder="Link Invite / Tautan Akses (https://...) *"
+                                          className="flex-[2] px-3 py-2 rounded-lg bg-white border border-zinc-300 font-mono-code focus:outline-none focus:border-zinc-950"
+                                        />
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                          <span className="text-[11px] font-mono-code text-zinc-500">
+                                            Stok:
+                                          </span>
+                                          <input
+                                            type="number"
+                                            required
+                                            min={1}
+                                            max={100000}
+                                            value={row.quantity}
+                                            onChange={(e) =>
+                                              handleUpdateStandaloneStockRow(
+                                                row.rowId,
+                                                'quantity',
+                                                e.target.value
+                                              )
+                                            }
+                                            placeholder="300"
+                                            className="w-24 px-3 py-2 rounded-lg bg-white border border-zinc-300 font-mono-code font-semibold focus:outline-none focus:border-zinc-950 tabular-nums"
+                                          />
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <input
+                                        type="text"
+                                        required
+                                        value={row.accountEmail}
+                                        onChange={(e) =>
+                                          handleUpdateStandaloneStockRow(
+                                            row.rowId,
+                                            'accountEmail',
+                                            e.target.value
+                                          )
+                                        }
+                                        placeholder="Kode Redeem / Voucher / License Key *"
+                                        className="flex-[2] px-3 py-2 rounded-lg bg-white border border-zinc-300 font-mono-code focus:outline-none focus:border-zinc-950"
+                                      />
+                                    )}
+
+                                    <input
+                                      type="text"
+                                      value={row.accountNotes}
+                                      onChange={(e) =>
+                                        handleUpdateStandaloneStockRow(
+                                          row.rowId,
+                                          'accountNotes',
+                                          e.target.value
+                                        )
+                                      }
+                                      placeholder="Catatan / Profil / PIN (Opsional)"
+                                      className="flex-1 px-3 py-2 rounded-lg bg-white border border-zinc-300 focus:outline-none focus:border-zinc-950"
+                                    />
+
+                                    {standaloneStockRows.length > 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveStandaloneStockRow(row.rowId)}
+                                        className="px-2 py-1 text-red-600 hover:text-red-800 cursor-pointer self-end sm:self-center"
+                                        title="Hapus baris"
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <button
+                                type="submit"
+                                disabled={isSavingStock || !selectedStockProductId}
+                                className="px-6 py-2.5 rounded-lg bg-zinc-950 hover:bg-zinc-800 text-white font-mono-code text-xs uppercase tracking-wider cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                              >
+                                {isSavingStock
+                                  ? 'Menyimpan Stok...'
+                                  : selectedStockProductDeliveryType === 'link'
+                                  ? `Simpan ${standaloneStockRows.length} Link (${standaloneTotalUnits.toLocaleString('id-ID')} Stok)`
+                                  : `Simpan ${standaloneStockRows.length} Baris Stok ke Variasi Ini`}
+                              </button>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </form>
                   )}
                 </div>
@@ -5778,45 +5992,64 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                           <tr className="border-b border-zinc-200 text-zinc-400 font-mono-code">
                             <th className="py-2.5 pr-4 font-normal">produk</th>
                             <th className="py-2.5 px-4 font-normal">variasi</th>
-                            <th className="py-2.5 px-4 font-normal">email / kode redeem</th>
-                            <th className="py-2.5 px-4 font-normal">password / tipe</th>
+                            <th className="py-2.5 px-4 font-normal">email / kode / link</th>
+                            <th className="py-2.5 px-4 font-normal">password / tipe &amp; kuota</th>
                             <th className="py-2.5 px-4 font-normal">status</th>
                             <th className="py-2.5 pl-4 text-right font-normal">hapus</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-zinc-100">
-                          {filteredAdminStock.map((stk) => (
-                            <tr key={stk.id}>
-                              <td className="py-3 pr-4 text-zinc-900 font-medium">
-                                {stk.productTitle}
-                              </td>
-                              <td className="py-3 px-4 font-mono-code text-zinc-600">
-                                {stk.variantLabel}
-                              </td>
-                              <td className="py-3 px-4 font-mono-code text-zinc-800">
-                                {stk.accountEmail}
-                              </td>
-                              <td className="py-3 px-4 font-mono-code text-zinc-700">
-                                {stk.accountPassword ? (
-                                  stk.accountPassword
-                                ) : (
-                                  <span className="text-zinc-400">kode redeem</span>
-                                )}
-                              </td>
-                              <td className="py-3 px-4 font-mono-code text-zinc-500">
-                                {stk.status}
-                              </td>
-                              <td className="py-3 pl-4 text-right">
-                                <button
-                                  type="button"
-                                  onClick={() => deleteAdminStockAccount(stk)}
-                                  className="text-zinc-400 hover:text-red-600 cursor-pointer"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
+                          {filteredAdminStock.map((stk) => {
+                            const stkProd = products.find((p) => p.id === stk.productId);
+                            const isStkLink =
+                              (stkProd && getProductDeliveryType(stkProd) === 'link') ||
+                              isUrlLike(stk.accountEmail);
+                            const remUnits =
+                              typeof stk.remainingUses === 'number'
+                                ? stk.remainingUses
+                                : stk.status === 'available'
+                                ? 1
+                                : 0;
+                            return (
+                              <tr key={stk.id}>
+                                <td className="py-3 pr-4 text-zinc-900 font-medium">
+                                  {stk.productTitle}
+                                </td>
+                                <td className="py-3 px-4 font-mono-code text-zinc-600">
+                                  {stk.variantLabel}
+                                </td>
+                                <td className="py-3 px-4 font-mono-code text-zinc-800 max-w-[260px] truncate">
+                                  {stk.accountEmail}
+                                </td>
+                                <td className="py-3 px-4 font-mono-code text-zinc-700">
+                                  {stk.accountPassword ? (
+                                    stk.accountPassword
+                                  ) : isStkLink ? (
+                                    <span className="inline-flex items-center gap-1.5">
+                                      <span className="text-zinc-600">link invite</span>
+                                      <span className="px-1.5 py-0.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px]">
+                                        stok: {remUnits}
+                                      </span>
+                                    </span>
+                                  ) : (
+                                    <span className="text-zinc-400">kode redeem</span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 font-mono-code text-zinc-500">
+                                  {stk.status}
+                                </td>
+                                <td className="py-3 pl-4 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() => deleteAdminStockAccount(stk)}
+                                    className="text-zinc-400 hover:text-red-600 cursor-pointer"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -5916,10 +6149,10 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                     <label className="block font-mono-code text-zinc-900 uppercase tracking-wider">
                       1 · Tipe Pengiriman Otomatis *
                     </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                       <button
                         type="button"
-                        onClick={() => setNewProdDeliveryType('account')}
+                        onClick={() => handleSelectDeliveryType('account')}
                         className={`p-4 rounded-xl border text-left cursor-pointer transition-colors ${
                           newProdDeliveryType === 'account'
                             ? 'bg-zinc-950 text-white border-zinc-950'
@@ -5940,7 +6173,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
 
                       <button
                         type="button"
-                        onClick={() => setNewProdDeliveryType('redeem')}
+                        onClick={() => handleSelectDeliveryType('redeem')}
                         className={`p-4 rounded-xl border text-left cursor-pointer transition-colors ${
                           newProdDeliveryType === 'redeem'
                             ? 'bg-zinc-950 text-white border-zinc-950'
@@ -5956,6 +6189,27 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                           }`}
                         >
                           Stok produk khusus menggunakan kolom Kode Redeem tanpa password.
+                        </p>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSelectDeliveryType('link')}
+                        className={`p-4 rounded-xl border text-left cursor-pointer transition-colors ${
+                          newProdDeliveryType === 'link'
+                            ? 'bg-zinc-950 text-white border-zinc-950'
+                            : 'bg-zinc-50 text-zinc-800 border-zinc-200 hover:border-zinc-400'
+                        }`}
+                      >
+                        <div className="font-mono-code text-xs font-medium">
+                          {newProdDeliveryType === 'link' ? '●' : '○'} Link Invite / Tautan Akses (Multi-Stok)
+                        </div>
+                        <p
+                          className={`text-[11px] mt-1 ${
+                            newProdDeliveryType === 'link' ? 'text-zinc-300' : 'text-zinc-500'
+                          }`}
+                        >
+                          1 link bisa dipakai untuk 1 hingga ribuan stok pembeli (mis. invite Canva Pro) dan dapat ditambah link baru lagi.
                         </p>
                       </button>
                     </div>
@@ -6274,7 +6528,9 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                               setNewProdUsageGuide(e.target.value);
                             }}
                             placeholder={
-                              newProdDeliveryType === 'redeem'
+                              newProdDeliveryType === 'link'
+                                ? '1. Klik tombol Buka Link atau salin tautan undangan...\n2. Login dengan akun pribadi untuk menerima akses tim/pro...'
+                                : newProdDeliveryType === 'redeem'
                                 ? '1. Salin kode redeem...\n2. Buka menu Redeem...'
                                 : '1. Buka aplikasi resmi...\n2. Login dengan Email & Password...'
                             }
@@ -6521,107 +6777,165 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                             </div>
 
                             {/* Structured Stock Rows */}
-                            <div className="pt-3 border-t border-zinc-200 space-y-3">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-[11px] font-mono-code text-zinc-600">
-                                  Stok langsung untuk variasi &ldquo;{vRow.label || `#${idx + 1}`}&rdquo; ({vRow.stockRows.length} baris):
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleAddVariantStockRow(vRow.id)}
-                                  className="px-3 py-1 rounded-lg bg-white border border-zinc-300 hover:border-zinc-950 font-mono-code text-[11px] text-zinc-900 cursor-pointer lowercase whitespace-nowrap"
-                                >
-                                  + tambah baris{' '}
-                                  {newProdDeliveryType === 'redeem' ? 'kode redeem' : 'akun'}
-                                </button>
-                              </div>
+                            {(() => {
+                              const varTotalLinkUnits =
+                                newProdDeliveryType === 'link'
+                                  ? vRow.stockRows.reduce(
+                                      (sum, s) =>
+                                        sum +
+                                        Math.max(1, Math.min(100000, Math.round(Number(s.quantity) || 1))),
+                                      0
+                                    )
+                                  : vRow.stockRows.length;
 
-                              {vRow.stockRows.length > 0 && (
-                                <div className="space-y-2">
-                                  {vRow.stockRows.map((sRow, sIdx) => (
-                                    <div
-                                      key={sRow.rowId}
-                                      className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-white p-2.5 rounded-xl border border-zinc-200"
+                              return (
+                                <div className="pt-3 border-t border-zinc-200 space-y-3">
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <span className="text-[11px] font-mono-code text-zinc-600">
+                                      {newProdDeliveryType === 'link'
+                                        ? `Stok link langsung untuk variasi "${vRow.label || `#${idx + 1}`}" (${vRow.stockRows.length} link · Total ${varTotalLinkUnits.toLocaleString('id-ID')} stok):`
+                                        : `Stok langsung untuk variasi "${vRow.label || `#${idx + 1}`}" (${vRow.stockRows.length} baris):`}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAddVariantStockRow(vRow.id)}
+                                      className="px-3 py-1 rounded-lg bg-white border border-zinc-300 hover:border-zinc-950 font-mono-code text-[11px] text-zinc-900 cursor-pointer lowercase whitespace-nowrap"
                                     >
-                                      <span className="font-mono-code text-[11px] text-zinc-400 w-7 shrink-0">
-                                        #{sIdx + 1}
-                                      </span>
-                                      {newProdDeliveryType === 'account' ? (
-                                        <>
+                                      + tambah{' '}
+                                      {newProdDeliveryType === 'link'
+                                        ? 'link / stok'
+                                        : newProdDeliveryType === 'redeem'
+                                        ? 'baris kode redeem'
+                                        : 'baris akun'}
+                                    </button>
+                                  </div>
+
+                                  {vRow.stockRows.length > 0 && (
+                                    <div className="space-y-2">
+                                      {vRow.stockRows.map((sRow, sIdx) => (
+                                        <div
+                                          key={sRow.rowId}
+                                          className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-white p-2.5 rounded-xl border border-zinc-200"
+                                        >
+                                          <span className="font-mono-code text-[11px] text-zinc-400 w-7 shrink-0">
+                                            #{sIdx + 1}
+                                          </span>
+                                          {newProdDeliveryType === 'account' ? (
+                                            <>
+                                              <input
+                                                type="text"
+                                                value={sRow.accountEmail}
+                                                onChange={(e) =>
+                                                  handleUpdateVariantStockRow(
+                                                    vRow.id,
+                                                    sRow.rowId,
+                                                    'accountEmail',
+                                                    e.target.value
+                                                  )
+                                                }
+                                                placeholder="Email / Username Akun"
+                                                className="flex-1 px-3 py-1.5 rounded-lg border border-zinc-300 text-xs focus:outline-none focus:border-zinc-950"
+                                              />
+                                              <input
+                                                type="text"
+                                                value={sRow.accountPassword}
+                                                onChange={(e) =>
+                                                  handleUpdateVariantStockRow(
+                                                    vRow.id,
+                                                    sRow.rowId,
+                                                    'accountPassword',
+                                                    e.target.value
+                                                  )
+                                                }
+                                                placeholder="Password Akun"
+                                                className="flex-1 px-3 py-1.5 rounded-lg border border-zinc-300 text-xs focus:outline-none focus:border-zinc-950"
+                                              />
+                                            </>
+                                          ) : newProdDeliveryType === 'link' ? (
+                                            <>
+                                              <input
+                                                type="text"
+                                                value={sRow.accountEmail}
+                                                onChange={(e) =>
+                                                  handleUpdateVariantStockRow(
+                                                    vRow.id,
+                                                    sRow.rowId,
+                                                    'accountEmail',
+                                                    e.target.value
+                                                  )
+                                                }
+                                                placeholder="Link Invite / Tautan Akses (https://...)"
+                                                className="flex-[2] px-3 py-1.5 rounded-lg border border-zinc-300 font-mono-code text-xs focus:outline-none focus:border-zinc-950"
+                                              />
+                                              <div className="flex items-center gap-1.5 shrink-0">
+                                                <span className="text-[11px] font-mono-code text-zinc-500">
+                                                  Stok:
+                                                </span>
+                                                <input
+                                                  type="number"
+                                                  min={1}
+                                                  max={100000}
+                                                  value={sRow.quantity}
+                                                  onChange={(e) =>
+                                                    handleUpdateVariantStockRow(
+                                                      vRow.id,
+                                                      sRow.rowId,
+                                                      'quantity',
+                                                      e.target.value
+                                                    )
+                                                  }
+                                                  placeholder="300"
+                                                  className="w-24 px-2.5 py-1.5 rounded-lg border border-zinc-300 font-mono-code font-semibold text-xs focus:outline-none focus:border-zinc-950 tabular-nums"
+                                                />
+                                              </div>
+                                            </>
+                                          ) : (
+                                            <input
+                                              type="text"
+                                              value={sRow.accountEmail}
+                                              onChange={(e) =>
+                                                handleUpdateVariantStockRow(
+                                                  vRow.id,
+                                                  sRow.rowId,
+                                                  'accountEmail',
+                                                  e.target.value
+                                                )
+                                              }
+                                              placeholder="Kode Redeem / Voucher / License Key"
+                                              className="flex-[2] px-3 py-1.5 rounded-lg border border-zinc-300 font-mono-code text-xs focus:outline-none focus:border-zinc-950"
+                                            />
+                                          )}
                                           <input
                                             type="text"
-                                            value={sRow.accountEmail}
+                                            value={sRow.accountNotes}
                                             onChange={(e) =>
                                               handleUpdateVariantStockRow(
                                                 vRow.id,
                                                 sRow.rowId,
-                                                'accountEmail',
+                                                'accountNotes',
                                                 e.target.value
                                               )
                                             }
-                                            placeholder="Email / Username Akun"
+                                            placeholder="Catatan / PIN (Opsional)"
                                             className="flex-1 px-3 py-1.5 rounded-lg border border-zinc-300 text-xs focus:outline-none focus:border-zinc-950"
                                           />
-                                          <input
-                                            type="text"
-                                            value={sRow.accountPassword}
-                                            onChange={(e) =>
-                                              handleUpdateVariantStockRow(
-                                                vRow.id,
-                                                sRow.rowId,
-                                                'accountPassword',
-                                                e.target.value
-                                              )
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              handleRemoveVariantStockRow(vRow.id, sRow.rowId)
                                             }
-                                            placeholder="Password Akun"
-                                            className="flex-1 px-3 py-1.5 rounded-lg border border-zinc-300 text-xs focus:outline-none focus:border-zinc-950"
-                                          />
-                                        </>
-                                      ) : (
-                                        <input
-                                          type="text"
-                                          value={sRow.accountEmail}
-                                          onChange={(e) =>
-                                            handleUpdateVariantStockRow(
-                                              vRow.id,
-                                              sRow.rowId,
-                                              'accountEmail',
-                                              e.target.value
-                                            )
-                                          }
-                                          placeholder="Kode Redeem / Voucher / License Key"
-                                          className="flex-[2] px-3 py-1.5 rounded-lg border border-zinc-300 font-mono-code text-xs focus:outline-none focus:border-zinc-950"
-                                        />
-                                      )}
-                                      <input
-                                        type="text"
-                                        value={sRow.accountNotes}
-                                        onChange={(e) =>
-                                          handleUpdateVariantStockRow(
-                                            vRow.id,
-                                            sRow.rowId,
-                                            'accountNotes',
-                                            e.target.value
-                                          )
-                                        }
-                                        placeholder="Catatan / PIN (Opsional)"
-                                        className="flex-1 px-3 py-1.5 rounded-lg border border-zinc-300 text-xs focus:outline-none focus:border-zinc-950"
-                                      />
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          handleRemoveVariantStockRow(vRow.id, sRow.rowId)
-                                        }
-                                        className="px-2 py-1 text-red-600 hover:text-red-800 cursor-pointer self-end sm:self-center"
-                                        title="Hapus baris"
-                                      >
-                                        <Trash2 size={14} />
-                                      </button>
+                                            className="px-2 py-1 text-red-600 hover:text-red-800 cursor-pointer self-end sm:self-center"
+                                            title="Hapus baris"
+                                          >
+                                            <Trash2 size={14} />
+                                          </button>
+                                        </div>
+                                      ))}
                                     </div>
-                                  ))}
+                                  )}
                                 </div>
-                              )}
-                            </div>
+                              );
+                            })()}
                           </div>
                         );
                       })}
