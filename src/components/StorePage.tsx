@@ -3,9 +3,11 @@ import {
   ArrowLeft,
   ArrowUpRight,
   Check,
+  ChevronDown,
   Copy,
   Eye,
   EyeOff,
+  HelpCircle,
   Image as ImageIcon,
   Lock,
   MessageSquare,
@@ -16,6 +18,7 @@ import {
   Search,
   Send,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   Star,
   Tag,
@@ -42,6 +45,7 @@ import {
   StoreRestockAlertRecord,
   ProductVariantOption,
   ProductDeliveryType,
+  ProductFaqItem,
   RefundSolutionType,
   StructuredStockRowInput,
   WijayapayMethodCode,
@@ -53,6 +57,7 @@ import {
   getVariantDiscountInfo,
   getProductDeliveryType,
   getProductIconUrl,
+  getProductFaqs,
   getDefaultProductTemplate,
   getProductBenefits,
   getProductBenefitsText,
@@ -140,6 +145,14 @@ interface BenefitDraftRow {
   desc: string;
 }
 
+interface FaqDraftRow {
+  id: string;
+  question: string;
+  answer: string;
+}
+
+type ProductSortOption = 'default' | 'bestseller' | 'price_desc' | 'price_asc' | 'alpha_asc';
+
 interface VariantDraftRow {
   id: string;
   label: string;
@@ -172,6 +185,14 @@ function createBenefitDraftRow(title = '', desc = '', index = 0): BenefitDraftRo
     id: `ben_${index}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`,
     title,
     desc,
+  };
+}
+
+function createFaqDraftRow(question = '', answer = '', index = 0): FaqDraftRow {
+  return {
+    id: `faq_${index}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 5)}`,
+    question,
+    answer,
   };
 }
 
@@ -417,9 +438,13 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
   const [restockAlerts, setRestockAlerts] = useState<StoreRestockAlertRecord[]>([]);
   const [loadingProducts, setLoadingProducts] = useState<boolean>(true);
 
-  // Filter & Search
+  // Filter, Sort & Search
   const [selectedCategory, setSelectedCategory] = useState<string>('semua');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [productSort, setProductSort] = useState<ProductSortOption>('default');
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState<boolean>(false);
+  const sortMenuRef = useRef<HTMLDivElement | null>(null);
+  const [openProductFaqIdx, setOpenProductFaqIdx] = useState<number | null>(0);
   const [stockFilter, setStockFilter] = useState<'all' | 'available' | 'sold' | 'refunded'>('all');
 
   // Password visibility & copy state
@@ -485,6 +510,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
   const [benefitDrafts, setBenefitDrafts] = useState<BenefitDraftRow[]>(() =>
     parseTemplateToBenefitRows(initialProductTemplate.benefitsText)
   );
+  const [faqDrafts, setFaqDrafts] = useState<FaqDraftRow[]>([]);
   const [newProdUsageGuide, setNewProdUsageGuide] = useState<string>(
     initialProductTemplate.usageGuide
   );
@@ -662,8 +688,21 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
       setSelectedProduct(activeProduct);
       setSelectedVariant(vars[0] || null);
       setProductReviewPage(1);
+      setOpenProductFaqIdx(0);
     }
   }, [activeProduct, selectedProduct]);
+
+  // Close sort dropdown on click outside
+  useEffect(() => {
+    if (!isSortMenuOpen) return;
+    const handleOutside = (e: MouseEvent) => {
+      if (sortMenuRef.current && !sortMenuRef.current.contains(e.target as Node)) {
+        setIsSortMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [isSortMenuOpen]);
 
   // Persist cart draft to sessionStorage whenever selection changes
   useEffect(() => {
@@ -882,7 +921,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
   }, [products]);
 
   const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
+    const matched = products.filter((p) => {
       const matchesCat =
         selectedCategory === 'semua' || p.category.toLowerCase() === selectedCategory;
       const q = searchQuery.trim().toLowerCase();
@@ -893,7 +932,51 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
         p.category.toLowerCase().includes(q);
       return matchesCat && matchesSearch;
     });
-  }, [products, selectedCategory, searchQuery]);
+
+    const getMinPrice = (p: StoreProductRecord): number => {
+      const vars = getVariantsForProduct(p);
+      if (vars.length > 0) {
+        return Math.min(...vars.map((v) => Math.max(0, Number(v.price) || 0)));
+      }
+      return Math.max(0, Number(p.price) || 0);
+    };
+
+    const reviewCountByProd: Record<string, number> = {};
+    reviews.forEach((r) => {
+      if (r.productId) {
+        reviewCountByProd[r.productId] = (reviewCountByProd[r.productId] || 0) + 1;
+      }
+    });
+
+    const sorted = [...matched];
+    if (productSort === 'bestseller') {
+      sorted.sort((a, b) => {
+        const salesA = Math.max(a.ratingCount || 0, reviewCountByProd[a.id] || 0);
+        const salesB = Math.max(b.ratingCount || 0, reviewCountByProd[b.id] || 0);
+        if (salesB !== salesA) return salesB - salesA;
+        const bestBadgeA = (a.badge || '').toLowerCase().includes('best') ? 1 : 0;
+        const bestBadgeB = (b.badge || '').toLowerCase().includes('best') ? 1 : 0;
+        if (bestBadgeB !== bestBadgeA) return bestBadgeB - bestBadgeA;
+        const avgDiff = (b.ratingAvg || 5) - (a.ratingAvg || 5);
+        if (avgDiff !== 0) return avgDiff;
+        return a.title.localeCompare(b.title, 'id', { sensitivity: 'base' });
+      });
+    } else if (productSort === 'price_desc') {
+      sorted.sort((a, b) => {
+        const diff = getMinPrice(b) - getMinPrice(a);
+        return diff !== 0 ? diff : a.title.localeCompare(b.title, 'id', { sensitivity: 'base' });
+      });
+    } else if (productSort === 'price_asc') {
+      sorted.sort((a, b) => {
+        const diff = getMinPrice(a) - getMinPrice(b);
+        return diff !== 0 ? diff : a.title.localeCompare(b.title, 'id', { sensitivity: 'base' });
+      });
+    } else if (productSort === 'alpha_asc') {
+      sorted.sort((a, b) => a.title.localeCompare(b.title, 'id', { sensitivity: 'base' }));
+    }
+
+    return sorted;
+  }, [products, reviews, selectedCategory, searchQuery, productSort]);
 
   const triggeredRestockNotifications = useMemo(() => {
     if (!currentUser) return [];
@@ -1337,6 +1420,27 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
     );
   };
 
+  const handleAddFaqRow = () => {
+    setFaqDrafts((prev) => {
+      if (prev.length >= 12) return prev;
+      return [...prev, createFaqDraftRow('', '', prev.length)];
+    });
+  };
+
+  const handleRemoveFaqRow = (id: string) => {
+    setFaqDrafts((prev) => prev.filter((row) => row.id !== id));
+  };
+
+  const handleUpdateFaqField = (
+    id: string,
+    field: 'question' | 'answer',
+    value: string
+  ) => {
+    setFaqDrafts((prev) =>
+      prev.map((row) => (row.id === id ? { ...row, [field]: value } : row))
+    );
+  };
+
   const handleAddVariantRow = () => {
     setVariantDrafts((prev) => [...prev, createDefaultVariantDraft(prev.length + 1)]);
   };
@@ -1536,6 +1640,8 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
     setNewProdDeliveryType(delivType);
     setNewProdDesc(product.description || fallbackTpl.description);
     setBenefitDrafts(parseTemplateToBenefitRows(existingBenefits || fallbackTpl.benefitsText));
+    const existingFaqs = getProductFaqs(product);
+    setFaqDrafts(existingFaqs.map((item, idx) => createFaqDraftRow(item.question, item.answer, idx)));
     setNewProdUsageGuide(product.usageGuide || fallbackTpl.usageGuide);
     setVariantDrafts(
       existingVars.map((v) => ({
@@ -1566,6 +1672,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
     setNewProdDeliveryType('account');
     setNewProdDesc(freshTpl.description);
     setBenefitDrafts(parseTemplateToBenefitRows(freshTpl.benefitsText));
+    setFaqDrafts([]);
     setNewProdUsageGuide(freshTpl.usageGuide);
     setVariantDrafts([createDefaultVariantDraft(1)]);
   };
@@ -1609,6 +1716,13 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
       const finalBenefits = serializedBenefits || fallbackTpl.benefitsText;
       const finalUsageGuide = newProdUsageGuide.trim() || fallbackTpl.usageGuide;
 
+      const cleanFaqs: ProductFaqItem[] = faqDrafts
+        .map((row) => ({
+          question: row.question.trim(),
+          answer: row.answer.trim(),
+        }))
+        .filter((row) => row.question.length > 0 && row.answer.length > 0);
+
       const cleanVariants: ProductVariantOption[] = variantDrafts.map((row, idx) => {
         const finalPrice = Math.max(0, Math.round(Number(row.price) || 0));
         const rawOrig = Math.max(0, Math.round(Number(row.originalPrice) || 0));
@@ -1621,6 +1735,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
           deliveryType: newProdDeliveryType,
           ...(idx === 0 && resolvedIcon ? { iconUrl: resolvedIcon } : {}),
           ...(idx === 0 && finalBenefits ? { benefitsText: finalBenefits } : {}),
+          ...(idx === 0 && cleanFaqs.length > 0 ? { faqs: cleanFaqs } : {}),
         };
       });
 
@@ -1629,6 +1744,7 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
         category: newProdCategory.trim() || 'Premium Apps',
         description: finalDesc,
         benefitsText: finalBenefits,
+        faqs: cleanFaqs,
         usageGuide: finalUsageGuide,
         deliveryType: newProdDeliveryType,
         variants: cleanVariants,
@@ -1970,169 +2086,56 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
     <div className="min-h-screen bg-[#fafafa] text-zinc-900 pt-24 sm:pt-28 pb-28 px-4 sm:px-8 lg:px-12">
       <div className="max-w-[1440px] mx-auto space-y-6 sm:space-y-8">
         {/* ============================================================= */}
-        {/* STORE HEADER & MULTI-PAGE NAVIGATION BAR */}
+        {/* STORE HEADER CARD (Hidden on /produk/:nama-produk) */}
         {/* ============================================================= */}
-        <div className="bg-white border border-zinc-200/90 rounded-2xl p-6 sm:p-8 space-y-6">
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-6 border-b border-zinc-100">
-            <div className="space-y-2">
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-medium tracking-tight text-zinc-950">
-                Digital Store
-              </h1>
-              <p className="text-xs sm:text-sm text-zinc-500 max-w-3xl font-light leading-relaxed">
-                Layanan produk digital dengan verifikasi pembayaran otomatis (QRIS, BCA/BNI Virtual Account, Alfamart, Indomaret), pengiriman instan akun maupun kode redeem, serta jaminan garansi resmi 3 hari.
-              </p>
-            </div>
+        {storeLocation.routePage !== 'product' && (
+          <div className="bg-white border border-zinc-200/90 rounded-2xl p-6 sm:p-8">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="space-y-2">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-medium tracking-tight text-zinc-950">
+                  Digital Store
+                </h1>
+                <p className="text-xs sm:text-sm text-zinc-500 max-w-3xl font-light leading-relaxed">
+                  Layanan produk digital dengan verifikasi pembayaran otomatis (QRIS, BCA/BNI Virtual Account, Alfamart, Indomaret), pengiriman instan akun maupun kode redeem, serta jaminan garansi resmi 3 hari.
+                </p>
+              </div>
 
-            {/* Unified User / Admin Account Box */}
-            <div className="flex items-center gap-4 self-start lg:self-end bg-zinc-50 border border-zinc-200/80 rounded-xl px-4 py-3 text-xs shrink-0">
-              {currentUser ? (
-                <div className="flex items-center gap-4">
-                  <div className="min-w-0">
-                    <div className="font-medium text-zinc-900 truncate max-w-[220px]">
-                      {currentUser.email}
+              {/* Unified User / Admin Account Box */}
+              <div className="flex items-center gap-4 self-start lg:self-center bg-zinc-50 border border-zinc-200/80 rounded-xl px-4 py-3 text-xs shrink-0">
+                {currentUser ? (
+                  <div className="flex items-center gap-4">
+                    <div className="min-w-0">
+                      <div className="font-medium text-zinc-900 truncate max-w-[220px]">
+                        {currentUser.email}
+                      </div>
+                      <div className="text-[11px] font-mono-code text-zinc-500 lowercase mt-0.5">
+                        {adminMode ? 'akses: administrator' : 'akses: pembeli terverifikasi'}
+                      </div>
                     </div>
-                    <div className="text-[11px] font-mono-code text-zinc-500 lowercase mt-0.5">
-                      {adminMode ? 'akses: administrator' : 'akses: pembeli terverifikasi'}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="px-3 py-1.5 rounded-lg border border-zinc-300 hover:border-zinc-950 text-zinc-700 hover:text-zinc-950 font-mono-code text-[11px] transition-colors cursor-pointer lowercase whitespace-nowrap shrink-0"
+                    >
+                      keluar
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="px-3 py-1.5 rounded-lg border border-zinc-300 hover:border-zinc-950 text-zinc-700 hover:text-zinc-950 font-mono-code text-[11px] transition-colors cursor-pointer lowercase whitespace-nowrap shrink-0"
-                  >
-                    keluar
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-4">
-                  <span className="text-zinc-500 whitespace-nowrap">Belum masuk sesi</span>
-                  <button
-                    type="button"
-                    onClick={handleLogin}
-                    className="px-4 py-2 rounded-lg bg-zinc-950 hover:bg-zinc-800 text-white font-mono-code text-xs transition-colors cursor-pointer lowercase whitespace-nowrap shrink-0"
-                  >
-                    masuk dengan google
-                  </button>
-                </div>
-              )}
+                ) : (
+                  <div className="flex items-center gap-4">
+                    <span className="text-zinc-500 whitespace-nowrap">Belum masuk sesi</span>
+                    <button
+                      type="button"
+                      onClick={handleLogin}
+                      className="px-4 py-2 rounded-lg bg-zinc-950 hover:bg-zinc-800 text-white font-mono-code text-xs transition-colors cursor-pointer lowercase whitespace-nowrap shrink-0"
+                    >
+                      masuk dengan google
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-
-          {/* Dedicated Multi-Page Route Navigation */}
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <nav className="flex flex-wrap items-center gap-2 text-xs font-mono-code">
-              <button
-                type="button"
-                onClick={() => {
-                  setCheckoutMode(false);
-                  navigateStorePath('/store');
-                }}
-                className={`px-3.5 py-2 rounded-lg border transition-colors cursor-pointer lowercase whitespace-nowrap shrink-0 ${
-                  storeLocation.routePage === 'catalog' || storeLocation.routePage === 'product'
-                    ? 'bg-zinc-950 text-white border-zinc-950 font-medium'
-                    : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400 hover:text-zinc-950'
-                }`}
-              >
-                katalog ({products.length})
-              </button>
-
-              <button
-                type="button"
-                onClick={() => navigateStorePath('/cart')}
-                className={`px-3.5 py-2 rounded-lg border transition-colors cursor-pointer lowercase whitespace-nowrap shrink-0 ${
-                  storeLocation.routePage === 'cart' || storeLocation.routePage === 'pay'
-                    ? 'bg-zinc-950 text-white border-zinc-950 font-medium'
-                    : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400 hover:text-zinc-950'
-                }`}
-              >
-                keranjang {selectedProduct ? '(1)' : ''}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => navigateStorePath('/store/transaksi')}
-                className={`px-3.5 py-2 rounded-lg border transition-colors cursor-pointer lowercase whitespace-nowrap shrink-0 ${
-                  storeLocation.routePage === 'transactions' || storeLocation.routePage === 'receipt'
-                    ? 'bg-zinc-950 text-white border-zinc-950 font-medium'
-                    : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400 hover:text-zinc-950'
-                }`}
-              >
-                transaksi ({myOrders.length})
-              </button>
-
-              <button
-                type="button"
-                onClick={() => navigateStorePath('/ulasan')}
-                className={`px-3.5 py-2 rounded-lg border transition-colors cursor-pointer lowercase whitespace-nowrap shrink-0 ${
-                  storeLocation.routePage === 'reviews'
-                    ? 'bg-zinc-950 text-white border-zinc-950 font-medium'
-                    : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400 hover:text-zinc-950'
-                }`}
-              >
-                ulasan ({reviews.length})
-              </button>
-
-              <button
-                type="button"
-                onClick={() => navigateStorePath('/store/refund')}
-                className={`px-3.5 py-2 rounded-lg border transition-colors cursor-pointer lowercase whitespace-nowrap shrink-0 ${
-                  storeLocation.routePage === 'refund' || storeLocation.routePage === 'ticket'
-                    ? 'bg-zinc-950 text-white border-zinc-950 font-medium'
-                    : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400 hover:text-zinc-950'
-                }`}
-              >
-                refund {myTickets.length > 0 ? `(${myTickets.length})` : ''}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => navigateStorePath('/store/dashboard')}
-                className={`px-3.5 py-2 rounded-lg border transition-colors cursor-pointer lowercase whitespace-nowrap shrink-0 ${
-                  storeLocation.routePage === 'dashboard'
-                    ? 'bg-zinc-950 text-white border-zinc-950 font-medium'
-                    : 'bg-white text-zinc-600 border-zinc-200 hover:border-zinc-400 hover:text-zinc-950'
-                }`}
-              >
-                {adminMode ? 'dashboard admin' : 'dashboard user'}
-              </button>
-
-              {adminMode && (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleStartCreateNewProduct}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border transition-colors cursor-pointer lowercase whitespace-nowrap shrink-0 ${
-                      storeLocation.routePage === 'new-product'
-                        ? 'bg-zinc-950 text-white border-zinc-950 font-medium'
-                        : 'bg-zinc-50 text-zinc-800 border-zinc-300 hover:border-zinc-950'
-                    }`}
-                  >
-                    <Plus size={13} />
-                    <span>produk baru</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => navigateStorePath('/promo')}
-                    className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border transition-colors cursor-pointer lowercase whitespace-nowrap shrink-0 ${
-                      storeLocation.routePage === 'promo'
-                        ? 'bg-zinc-950 text-white border-zinc-950 font-medium'
-                        : 'bg-zinc-50 text-zinc-800 border-zinc-300 hover:border-zinc-950'
-                    }`}
-                  >
-                    <Tag size={13} />
-                    <span>kode promo ({storePromos.length})</span>
-                  </button>
-                </>
-              )}
-            </nav>
-
-            <div className="hidden xl:flex items-center gap-2 text-[11px] font-mono-code text-zinc-400 lowercase whitespace-nowrap">
-              <ShieldCheck size={14} className="text-emerald-700" />
-              <span>pengiriman instan · klaim refund 10 menit – 3 hari</span>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* Status Toast Notification */}
         {statusMessage && (
@@ -2201,60 +2204,147 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
         {/* PAGE 1A: /store — KATALOG PRODUK (KLIK CARD -> /produk/:slug) */}
         {/* ============================================================= */}
         {storeLocation.routePage === 'catalog' && (
-          <div className="bg-white border border-zinc-200/90 rounded-2xl p-6 sm:p-8 space-y-6">
-            {/* Category Filter & Search Bar */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-zinc-100">
-              <div className="flex flex-wrap items-center gap-2 text-xs font-mono-code">
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setSelectedCategory(cat)}
-                    className={`px-3.5 py-1.5 rounded-lg border transition-colors cursor-pointer lowercase whitespace-nowrap ${
-                      selectedCategory === cat
-                        ? 'bg-zinc-950 text-white border-zinc-950'
-                        : 'bg-zinc-50 text-zinc-600 border-zinc-200 hover:border-zinc-400'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
+          <div className="space-y-6">
+            {/* Standalone Card: Category Filter & Search Bar */}
+            <div className="bg-white border border-zinc-200/90 rounded-2xl p-5 sm:p-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-2 text-xs font-mono-code">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`px-3.5 py-1.5 rounded-lg border transition-colors cursor-pointer lowercase whitespace-nowrap ${
+                        selectedCategory === cat
+                          ? 'bg-zinc-950 text-white border-zinc-950'
+                          : 'bg-zinc-50 text-zinc-600 border-zinc-200 hover:border-zinc-400'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
 
-              <div className="flex items-center gap-3 w-full md:w-auto">
-                {adminMode && (
-                  <button
-                    type="button"
-                    onClick={handleStartCreateNewProduct}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-mono-code cursor-pointer lowercase shrink-0 whitespace-nowrap"
-                  >
-                    <Plus size={13} />
-                    <span>produk baru</span>
-                  </button>
-                )}
-                <div className="relative flex-1 md:w-72">
-                  <Search
-                    size={14}
-                    className="text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                  />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Cari produk atau kategori..."
-                    className="w-full pl-9 pr-3.5 py-2 rounded-lg border border-zinc-200 text-xs focus:outline-none focus:border-zinc-950 bg-zinc-50/50"
-                  />
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full md:w-auto">
+                  {adminMode && (
+                    <button
+                      type="button"
+                      onClick={handleStartCreateNewProduct}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-zinc-950 hover:bg-zinc-800 text-white text-xs font-mono-code cursor-pointer lowercase shrink-0 whitespace-nowrap"
+                    >
+                      <Plus size={13} />
+                      <span>produk baru</span>
+                    </button>
+                  )}
+                  <div className="flex items-center gap-2 flex-1 md:w-auto">
+                    <div className="relative flex-1 md:w-72">
+                      <Search
+                        size={14}
+                        className="text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                      />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Cari produk atau kategori..."
+                        className="w-full pl-9 pr-3.5 py-2 rounded-lg border border-zinc-200 text-xs focus:outline-none focus:border-zinc-950 bg-zinc-50/50"
+                      />
+                    </div>
+
+                    {/* Filter / Sort Dropdown Trigger */}
+                    <div className="relative shrink-0" ref={sortMenuRef}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          uiSfx.playClick();
+                          setIsSortMenuOpen((prev) => !prev);
+                        }}
+                        aria-label="Urutkan & filter produk"
+                        title="Urutkan & filter produk"
+                        className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-mono-code transition-colors cursor-pointer whitespace-nowrap ${
+                          productSort !== 'default' || isSortMenuOpen
+                            ? 'bg-zinc-950 text-white border-zinc-950'
+                            : 'bg-zinc-50 text-zinc-700 border-zinc-200 hover:border-zinc-950'
+                        }`}
+                      >
+                        <SlidersHorizontal size={14} />
+                        {productSort !== 'default' && (
+                          <span className="hidden sm:inline lowercase">
+                            {productSort === 'bestseller'
+                              ? 'terlaris'
+                              : productSort === 'price_desc'
+                              ? 'termahal'
+                              : productSort === 'price_asc'
+                              ? 'termurah'
+                              : 'abjad'}
+                          </span>
+                        )}
+                      </button>
+
+                      {isSortMenuOpen && (
+                        <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-zinc-200 rounded-xl shadow-lg p-1.5 z-30 space-y-0.5 text-xs">
+                          <div className="px-2.5 py-1.5 text-[10px] font-mono-code text-zinc-400 uppercase tracking-wider">
+                            Urutkan Produk
+                          </div>
+                          {(
+                            [
+                              { id: 'bestseller', label: 'Terlaris' },
+                              { id: 'price_desc', label: 'Termahal' },
+                              { id: 'price_asc', label: 'Termurah' },
+                              { id: 'alpha_asc', label: 'Sesuai Abjad (A–Z)' },
+                            ] as const
+                          ).map((opt) => {
+                            const active = productSort === opt.id;
+                            return (
+                              <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => {
+                                  uiSfx.playClick();
+                                  setProductSort(active ? 'default' : opt.id);
+                                  setIsSortMenuOpen(false);
+                                }}
+                                className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-left transition-colors cursor-pointer whitespace-nowrap ${
+                                  active
+                                    ? 'bg-zinc-950 text-white font-medium'
+                                    : 'text-zinc-700 hover:bg-zinc-100'
+                                }`}
+                              >
+                                <span>{opt.label}</span>
+                                {active && <Check size={13} />}
+                              </button>
+                            );
+                          })}
+                          {productSort !== 'default' && (
+                            <div className="pt-1 mt-1 border-t border-zinc-100">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  uiSfx.playClick();
+                                  setProductSort('default');
+                                  setIsSortMenuOpen(false);
+                                }}
+                                className="w-full px-2.5 py-1.5 rounded-lg text-left text-[11px] font-mono-code text-zinc-500 hover:text-zinc-950 hover:bg-zinc-50 cursor-pointer lowercase"
+                              >
+                                reset urutan (default)
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Product Grid */}
+            {/* Product Grid (Standalone cards, no outer wrapper card) */}
             {loadingProducts ? (
-              <div className="py-16 text-center text-xs font-mono-code text-zinc-400 lowercase">
+              <div className="bg-white border border-zinc-200/90 rounded-2xl py-16 text-center text-xs font-mono-code text-zinc-400 lowercase">
                 memuat daftar produk digital...
               </div>
             ) : filteredProducts.length === 0 ? (
-              <div className="py-16 text-center space-y-3 border border-dashed border-zinc-200 rounded-xl p-8">
+              <div className="bg-white py-16 text-center space-y-3 border border-dashed border-zinc-200 rounded-2xl p-8">
                 <div className="text-sm font-medium text-zinc-900">
                   Belum ada produk digital yang tersedia.
                 </div>
@@ -2513,25 +2603,18 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                   : undefined;
 
                 const benefitList = getProductBenefits(activeProduct);
+                const productFaqs = getProductFaqs(activeProduct);
 
                 return (
                   <>
-                    {/* Top Breadcrumb matching reference UI */}
+                    {/* Minimal Top Navigation Text: Produk / Nama Produk */}
                     <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
                       <button
                         type="button"
-                        onClick={onNavigateHome}
-                        className="hover:text-zinc-950 cursor-pointer"
-                      >
-                        Beranda
-                      </button>
-                      <span>/</span>
-                      <button
-                        type="button"
                         onClick={() => navigateStorePath('/store')}
-                        className="hover:text-zinc-950 cursor-pointer"
+                        className="hover:text-zinc-950 transition-colors cursor-pointer"
                       >
-                        Semua Produk
+                        Produk
                       </button>
                       <span>/</span>
                       <span className="font-medium text-zinc-950">{activeProduct.title}</span>
@@ -2975,6 +3058,61 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                         </div>
                       </div>
                     </div>
+
+                    {/* FAQ PRODUK (Per-poin dari Admin, tampil sebelum Ulasan) */}
+                    {productFaqs.length > 0 && (
+                      <div className="pt-8 border-t border-zinc-200 space-y-5">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <h3 className="text-lg font-semibold text-zinc-950 inline-flex items-center gap-2">
+                            <HelpCircle size={18} className="text-zinc-700" />
+                            <span>FAQ Produk</span>
+                          </h3>
+                          <span className="text-xs text-zinc-400">
+                            ({productFaqs.length} pertanyaan yang sering diajukan)
+                          </span>
+                        </div>
+
+                        <div className="bg-white border border-zinc-200 rounded-xl divide-y divide-zinc-100 overflow-hidden">
+                          {productFaqs.map((faqItem, faqIdx) => {
+                            const isOpen = openProductFaqIdx === faqIdx;
+                            return (
+                              <div key={faqIdx}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    uiSfx.playClick();
+                                    setOpenProductFaqIdx((prev) =>
+                                      prev === faqIdx ? null : faqIdx
+                                    );
+                                  }}
+                                  className="w-full px-5 py-4 flex items-center justify-between gap-4 text-left hover:bg-zinc-50/80 transition-colors cursor-pointer"
+                                >
+                                  <div className="flex items-start gap-3 min-w-0">
+                                    <span className="font-mono-code text-[11px] font-semibold text-zinc-400 pt-0.5 shrink-0">
+                                      {String(faqIdx + 1).padStart(2, '0')}
+                                    </span>
+                                    <span className="text-xs sm:text-sm font-medium text-zinc-950 leading-snug">
+                                      {faqItem.question}
+                                    </span>
+                                  </div>
+                                  <ChevronDown
+                                    size={16}
+                                    className={`text-zinc-400 shrink-0 transition-transform duration-200 ${
+                                      isOpen ? 'rotate-180 text-zinc-950' : ''
+                                    }`}
+                                  />
+                                </button>
+                                {isOpen && (
+                                  <div className="px-5 pb-4 pl-12 text-xs text-zinc-600 font-light leading-relaxed whitespace-pre-line">
+                                    {faqItem.answer}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
 
                     {/* BOTTOM FULL-WIDTH SECTION: ULASAN PRODUK (PER 10 ULASAN) */}
                     <div className="pt-8 border-t border-zinc-200 space-y-5">
@@ -6161,12 +6299,104 @@ export const StorePage: React.FC<StorePageProps> = ({ onNavigateHome }) => {
                     </div>
                   </div>
 
+                  {/* 4. FAQ Produk Per-Poin (Opsional — Tampil Sebelum Ulasan di Halaman Produk) */}
+                  <div className="border border-zinc-200 rounded-2xl p-5 sm:p-6 space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-100">
+                      <div>
+                        <div className="font-mono-code text-xs font-semibold text-zinc-950 uppercase tracking-wider">
+                          4 · FAQ Produk (Per Poin, Maksimal 12 Poin)
+                        </div>
+                        <p className="text-[11px] text-zinc-500 mt-0.5">
+                          Opsional — Setiap poin FAQ muncul tepat sebelum card Ulasan di halaman{' '}
+                          <span className="font-mono-code text-zinc-700">/produk/nama-produk</span>.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <span className="px-2.5 py-1 rounded-md bg-zinc-100 font-mono-code text-[11px] text-zinc-700 tabular-nums">
+                          {faqDrafts.length}/12 poin
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleAddFaqRow}
+                          disabled={faqDrafts.length >= 12}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-zinc-950 hover:bg-zinc-800 text-white font-mono-code text-[11px] cursor-pointer lowercase disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                        >
+                          <Plus size={12} />
+                          <span>
+                            {faqDrafts.length >= 12 ? 'maksimal 12 poin' : 'tambah poin faq'}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {faqDrafts.length === 0 ? (
+                      <div className="p-4 rounded-xl border border-dashed border-zinc-300 bg-zinc-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-zinc-500">
+                        <span>
+                          Belum ada poin FAQ untuk produk ini. Tambahkan pertanyaan &amp; jawaban yang sering ditanyakan pembeli.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleAddFaqRow}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-300 hover:border-zinc-950 text-zinc-800 font-mono-code text-[11px] cursor-pointer lowercase whitespace-nowrap self-start sm:self-center"
+                        >
+                          <Plus size={12} />
+                          <span>+ buat poin faq pertama</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {faqDrafts.map((faqRow, faqIdx) => (
+                          <div
+                            key={faqRow.id}
+                            className="p-4 rounded-xl border border-zinc-200 bg-zinc-50/70 space-y-2.5"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-mono-code text-[11px] font-medium text-zinc-700">
+                                Poin FAQ #{faqIdx + 1}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveFaqRow(faqRow.id)}
+                                className="inline-flex items-center gap-1 text-[11px] font-mono-code text-red-600 hover:text-red-800 cursor-pointer lowercase"
+                              >
+                                <Trash2 size={12} />
+                                <span>hapus poin</span>
+                              </button>
+                            </div>
+                            <div className="space-y-2">
+                              <input
+                                type="text"
+                                maxLength={180}
+                                value={faqRow.question}
+                                onChange={(e) =>
+                                  handleUpdateFaqField(faqRow.id, 'question', e.target.value)
+                                }
+                                placeholder="Pertanyaan (cth: Apakah ini akun privat atau sharing?)"
+                                className="w-full px-3 py-2 rounded-lg bg-white border border-zinc-300 text-xs font-medium focus:outline-none focus:border-zinc-950"
+                              />
+                              <textarea
+                                rows={2}
+                                maxLength={600}
+                                value={faqRow.answer}
+                                onChange={(e) =>
+                                  handleUpdateFaqField(faqRow.id, 'answer', e.target.value)
+                                }
+                                placeholder="Jawaban lengkap atas pertanyaan di atas..."
+                                className="w-full px-3 py-2 rounded-lg bg-white border border-zinc-300 text-xs focus:outline-none focus:border-zinc-950 leading-relaxed"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   {/* 5. Variasi, Harga Normal (Coret) & Harga Jual/Diskon + Stok Awal */}
                   <div className="space-y-4 pt-4 border-t border-zinc-200">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <div className="font-mono-code text-zinc-900 uppercase tracking-wider">
-                          4 · Daftar Variasi, Harga Diskon &amp; Stok Awal ({variantDrafts.length} Variasi)
+                          5 · Daftar Variasi, Harga Diskon &amp; Stok Awal ({variantDrafts.length} Variasi)
                         </div>
                         <p className="text-[11px] text-zinc-500 mt-0.5">
                           Isi &ldquo;Harga Normal / Coret&rdquo; lebih tinggi dari Harga Jual untuk menampilkan label diskon persentase otomatis di katalog &amp; checkout.

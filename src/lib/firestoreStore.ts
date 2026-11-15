@@ -112,6 +112,11 @@ export interface WijayapayTransactionData {
   nomor_pembayaran?: string;
 }
 
+export interface ProductFaqItem {
+  question: string;
+  answer: string;
+}
+
 export interface ProductVariantOption {
   id: string;
   label: string;
@@ -121,6 +126,7 @@ export interface ProductVariantOption {
   deliveryType?: ProductDeliveryType;
   iconUrl?: string;
   benefitsText?: string;
+  faqs?: ProductFaqItem[];
 }
 
 export interface ProductBenefitItem {
@@ -494,6 +500,7 @@ export interface StoreProductRecord {
   badge: string;
   iconUrl?: string;
   benefitsText?: string;
+  faqs?: ProductFaqItem[];
   createdAt?: Timestamp | null;
   updatedAt?: Timestamp | null;
 }
@@ -774,14 +781,36 @@ export function parseBenefitsText(
   ];
 }
 
+export function sanitizeFaqs(rawFaqs?: ProductFaqItem[]): ProductFaqItem[] {
+  if (!Array.isArray(rawFaqs)) return [];
+  return rawFaqs
+    .filter(
+      (item) =>
+        item &&
+        typeof item.question === 'string' &&
+        typeof item.answer === 'string' &&
+        item.question.trim().length > 0 &&
+        item.answer.trim().length > 0
+    )
+    .slice(0, 12)
+    .map((item) => ({
+      question: clampString(item.question, 180, ''),
+      answer: clampString(item.answer, 600, ''),
+    }))
+    .filter((item) => item.question.length > 0 && item.answer.length > 0);
+}
+
 export function serializeVariants(
   variants: ProductVariantOption[],
   deliveryType: ProductDeliveryType = 'account',
   iconUrl: string = '',
-  benefitsText: string = ''
+  benefitsText: string = '',
+  faqs?: ProductFaqItem[]
 ): string {
   const cleanIcon = clampString(normalizeTheSvgIconUrl(iconUrl), 240, '');
   const cleanBenefits = clampString(benefitsText, 2400, '');
+  const resolvedFaqs =
+    faqs !== undefined ? sanitizeFaqs(faqs) : sanitizeFaqs(variants?.[0]?.faqs);
   const sanitized: ProductVariantOption[] = (variants || [])
     .filter((v) => v && v.label && v.label.trim().length > 0)
     .slice(0, 20)
@@ -801,6 +830,7 @@ export function serializeVariants(
         ...(idx === 0 && (cleanBenefits || v.benefitsText)
           ? { benefitsText: cleanBenefits || clampString(v.benefitsText || '', 2400, '') }
           : {}),
+        ...(idx === 0 && resolvedFaqs.length > 0 ? { faqs: resolvedFaqs } : {}),
       };
     });
 
@@ -813,6 +843,7 @@ export function serializeVariants(
       deliveryType,
       ...(cleanIcon ? { iconUrl: cleanIcon } : {}),
       ...(cleanBenefits ? { benefitsText: cleanBenefits } : {}),
+      ...(resolvedFaqs.length > 0 ? { faqs: resolvedFaqs } : {}),
     });
   }
 
@@ -821,6 +852,16 @@ export function serializeVariants(
     sanitized[0] = {
       ...sanitized[0],
       benefitsText: sanitized[0].benefitsText.slice(0, 1000),
+    };
+    json = JSON.stringify(sanitized);
+  }
+  if (json.length > 7800 && sanitized[0]?.faqs && sanitized[0].faqs.length > 0) {
+    sanitized[0] = {
+      ...sanitized[0],
+      faqs: sanitized[0].faqs.slice(0, 8).map((f) => ({
+        question: f.question.slice(0, 120),
+        answer: f.answer.slice(0, 240),
+      })),
     };
     json = JSON.stringify(sanitized);
   }
@@ -840,6 +881,7 @@ export function getVariantsForProduct(product: {
         return parsed.map((v: any, idx: number) => {
           const cleanPrice = Math.max(0, Math.round(Number(v.price ?? product.price) || 0));
           const cleanOrig = Math.max(0, Math.round(Number(v.originalPrice || 0)));
+          const parsedFaqs = Array.isArray(v.faqs) ? sanitizeFaqs(v.faqs) : undefined;
           return {
             id: sanitizeId(String(v.id || `var_${idx + 1}`)),
             label: clampString(String(v.label || `Variasi ${idx + 1}`), 80, `Variasi ${idx + 1}`),
@@ -853,6 +895,7 @@ export function getVariantsForProduct(product: {
             deliveryType: v.deliveryType === 'redeem' ? 'redeem' : 'account',
             iconUrl: v.iconUrl ? normalizeTheSvgIconUrl(String(v.iconUrl)) : undefined,
             benefitsText: v.benefitsText ? String(v.benefitsText) : undefined,
+            ...(parsedFaqs && parsedFaqs.length > 0 ? { faqs: parsedFaqs } : {}),
           };
         });
       }
@@ -929,6 +972,21 @@ export function getProductDeliveryType(product: {
 }): ProductDeliveryType {
   const vars = getVariantsForProduct(product);
   return vars[0]?.deliveryType === 'redeem' ? 'redeem' : 'account';
+}
+
+export function getProductFaqs(product: {
+  id: string;
+  faqs?: ProductFaqItem[];
+  variantsJson?: string;
+  durationLabel: string;
+  price: number;
+}): ProductFaqItem[] {
+  if (Array.isArray(product.faqs)) {
+    return sanitizeFaqs(product.faqs);
+  }
+  const vars = getVariantsForProduct(product);
+  const found = vars.find((v) => Array.isArray(v.faqs) && v.faqs.length > 0)?.faqs;
+  return sanitizeFaqs(found);
 }
 
 export function parseTicketProofImages(proofImagesJson: string): string[] {
@@ -1009,6 +1067,7 @@ export function subscribeStoreProducts(
             ...baseRecord,
             iconUrl: getProductIconUrl(baseRecord),
             benefitsText: getProductBenefitsText(baseRecord),
+            faqs: getProductFaqs(baseRecord),
           };
         })
         .filter((item) => !LEGACY_FAKE_PRODUCT_IDS.includes(item.id));
@@ -1275,13 +1334,14 @@ export async function purgeLegacyFakeStoreData(): Promise<number> {
   return deletedCount;
 }
 
-// Admin: Create Product with Variations, Delivery Type, Icon, Benefits & Usage Guide
+// Admin: Create Product with Variations, Delivery Type, Icon, Benefits, FAQs & Usage Guide
 export async function createStoreProduct(input: {
   id?: string;
   title: string;
   category: string;
   description: string;
   benefitsText?: string;
+  faqs?: ProductFaqItem[];
   usageGuide: string;
   deliveryType: ProductDeliveryType;
   variants: ProductVariantOption[];
@@ -1296,11 +1356,13 @@ export async function createStoreProduct(input: {
   );
   const path = `storeProducts/${productId}`;
   const resolvedIcon = input.iconUrl || inferTheSvgIconFromTitle(input.title);
+  const cleanFaqs = sanitizeFaqs(input.faqs);
   const variantsJson = serializeVariants(
     input.variants,
     input.deliveryType,
     resolvedIcon,
-    input.benefitsText || ''
+    input.benefitsText || '',
+    cleanFaqs
   );
   const parsedVariants: ProductVariantOption[] = JSON.parse(variantsJson);
   const lowestVariant = parsedVariants.reduce(
@@ -1339,6 +1401,7 @@ export async function createStoreProduct(input: {
       ...payload,
       iconUrl: normalizeTheSvgIconUrl(resolvedIcon),
       benefitsText: input.benefitsText || '',
+      faqs: cleanFaqs,
       createdAt: null,
       updatedAt: null,
     };
@@ -1347,7 +1410,7 @@ export async function createStoreProduct(input: {
   }
 }
 
-// Admin: Edit / Update Existing Product, Variations, Delivery Type, Icon, Benefits & Usage Guide
+// Admin: Edit / Update Existing Product, Variations, Delivery Type, Icon, Benefits, FAQs & Usage Guide
 export async function updateStoreProduct(
   productId: string,
   input: {
@@ -1355,6 +1418,7 @@ export async function updateStoreProduct(
     category: string;
     description: string;
     benefitsText?: string;
+    faqs?: ProductFaqItem[];
     usageGuide: string;
     deliveryType: ProductDeliveryType;
     variants: ProductVariantOption[];
@@ -1366,11 +1430,13 @@ export async function updateStoreProduct(
   const path = `storeProducts/${cleanId}`;
   const prodRef = doc(db, 'storeProducts', cleanId);
   const resolvedIcon = input.iconUrl || inferTheSvgIconFromTitle(input.title);
+  const cleanFaqs = sanitizeFaqs(input.faqs);
   const variantsJson = serializeVariants(
     input.variants,
     input.deliveryType,
     resolvedIcon,
-    input.benefitsText || ''
+    input.benefitsText || '',
+    cleanFaqs
   );
   const parsedVariants: ProductVariantOption[] = JSON.parse(variantsJson);
   const lowestVariant = parsedVariants.reduce(
@@ -1411,6 +1477,7 @@ export async function updateStoreProduct(
         ...updatedFields,
         iconUrl: normalizeTheSvgIconUrl(resolvedIcon),
         benefitsText: input.benefitsText || '',
+        faqs: cleanFaqs,
         createdAt: existingData.createdAt || null,
         updatedAt: null,
       };

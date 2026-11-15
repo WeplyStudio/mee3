@@ -213,8 +213,14 @@ export default function App() {
       return;
     }
 
-    // If already on the requested page with no project change or special callback, just scroll top
+    // If already on the requested page with no project change or special callback
     if (page === currentPageRef.current && !options?.project && !options?.callback) {
+      if (page === 'store' && targetPath && typeof window !== 'undefined') {
+        if (window.location.pathname !== targetPath) {
+          window.history.pushState({ page: 'store' }, '', targetPath);
+          window.dispatchEvent(new PopStateEvent('popstate'));
+        }
+      }
       if (lenisRef.current) {
         lenisRef.current.scrollTo(0, { duration: 1.2 });
       } else {
@@ -577,6 +583,11 @@ export default function App() {
               navigateTo('store');
               setIsMenuOpen(false);
             }}
+            onOpenStorePath={(path) => {
+              navigateTo('store', path);
+              setIsMenuOpen(false);
+            }}
+            isStoreActive={currentPage === 'store'}
             onScrollTo={(id) => {
               if (id === 'projects') {
                 navigateTo('projects');

@@ -14,6 +14,8 @@ interface Props {
   onOpenStory: () => void;
   onOpenBio?: () => void;
   onOpenStore?: () => void;
+  onOpenStorePath?: (path: string) => void;
+  isStoreActive?: boolean;
   onScrollTo: (id: string) => void;
   menuLabel: string;
 }
@@ -57,21 +59,104 @@ const itemVariants = {
   },
 };
 
+interface MenuLocaleStrings {
+  lendAnEar: string;
+  close: string;
+  home: string;
+  aboutMe: string;
+  work: string;
+  contactMe: string;
+  storeCatalog: string;
+  storeDashboard: string;
+  storeTransactions: string;
+  storeReviews: string;
+  storeCart: string;
+}
+
+const MENU_LOCALE_LABELS: Record<Language, MenuLocaleStrings> = {
+  id: {
+    lendAnEar: 'dengarkan suasana',
+    close: 'tutup',
+    home: 'Beranda',
+    aboutMe: 'Tentang Saya',
+    work: 'Karya',
+    contactMe: 'Hubungi Saya',
+    storeCatalog: 'Katalog',
+    storeDashboard: 'Dashboard',
+    storeTransactions: 'Transaksi',
+    storeReviews: 'Ulasan',
+    storeCart: 'Keranjang',
+  },
+  en: {
+    lendAnEar: 'lend an ear',
+    close: 'close',
+    home: 'Home',
+    aboutMe: 'About Me',
+    work: 'Work',
+    contactMe: 'Contact Me',
+    storeCatalog: 'Catalog',
+    storeDashboard: 'Dashboard',
+    storeTransactions: 'Transactions',
+    storeReviews: 'Reviews',
+    storeCart: 'Cart',
+  },
+  de: {
+    lendAnEar: 'hintergrundsound',
+    close: 'schließen',
+    home: 'Startseite',
+    aboutMe: 'Über Mich',
+    work: 'Arbeiten',
+    contactMe: 'Kontakt',
+    storeCatalog: 'Katalog',
+    storeDashboard: 'Dashboard',
+    storeTransactions: 'Transaktionen',
+    storeReviews: 'Bewertungen',
+    storeCart: 'Warenkorb',
+  },
+  ja: {
+    lendAnEar: '環境音を聴く',
+    close: '閉じる',
+    home: 'ホーム',
+    aboutMe: 'プロフィール',
+    work: '実績',
+    contactMe: 'お問い合わせ',
+    storeCatalog: 'カタログ',
+    storeDashboard: 'ダッシュボード',
+    storeTransactions: '取引履歴',
+    storeReviews: 'レビュー',
+    storeCart: 'カート',
+  },
+};
+
 export const MorphingMenu: React.FC<Props> = ({
   isOpen,
   setIsOpen,
+  lang = 'en',
   isAudioPlaying,
   onToggleAudio,
   onOpenContact,
   onOpenStory,
   onOpenBio,
   onOpenStore,
+  onOpenStorePath,
+  isStoreActive = false,
   onScrollTo,
   menuLabel,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isNameToggled, setIsNameToggled] = useState<boolean>(false);
   const [isNameHovered, setIsNameHovered] = useState<boolean>(false);
+  const [menuMode, setMenuMode] = useState<'folio' | 'store'>(() =>
+    isStoreActive ? 'store' : 'folio'
+  );
+  const labels = MENU_LOCALE_LABELS[lang] || MENU_LOCALE_LABELS.en;
+
+  // Sync default menu tab to match active section when menu opens
+  useEffect(() => {
+    if (isOpen) {
+      setMenuMode(isStoreActive ? 'store' : 'folio');
+    }
+  }, [isOpen, isStoreActive]);
 
   // Close on Escape key
   useEffect(() => {
@@ -89,6 +174,14 @@ export const MorphingMenu: React.FC<Props> = ({
     uiSfx.playClick();
     setIsOpen(false);
     action();
+  };
+
+  const handleStoreNav = (path: string) => {
+    if (onOpenStorePath) {
+      handleNav(() => onOpenStorePath(path));
+    } else if (onOpenStore) {
+      handleNav(onOpenStore);
+    }
   };
 
   return (
@@ -123,8 +216,8 @@ export const MorphingMenu: React.FC<Props> = ({
           animate={
             isOpen
               ? {
-                  width: 280,
-                  height: 350,
+                  width: 292,
+                  height: 368,
                   borderRadius: 22,
                   backgroundColor: '#121213',
                   boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.95)',
@@ -163,7 +256,7 @@ export const MorphingMenu: React.FC<Props> = ({
             <span className="font-normal lowercase tracking-tight text-xs sm:text-[13px]">{menuLabel}</span>
           </div>
 
-          {/* Open State Menu Content (Clean Minimalist Layout Matching Uploaded Image - No Icons) */}
+          {/* Open State Menu Content */}
           <AnimatePresence>
             {isOpen && (
               <motion.div
@@ -189,7 +282,7 @@ export const MorphingMenu: React.FC<Props> = ({
                   >
                     <span className="text-[10px] text-zinc-500 group-hover:text-zinc-300">o</span>
                     <span className="font-normal tracking-tight text-zinc-400 group-hover:text-zinc-200 text-xs">
-                      lend an ear
+                      {labels.lendAnEar}
                     </span>
                   </button>
 
@@ -203,84 +296,184 @@ export const MorphingMenu: React.FC<Props> = ({
                     onMouseEnter={() => uiSfx.playHover()}
                     className="font-bold text-white hover:text-zinc-300 transition-colors tracking-tight text-xs cursor-pointer lowercase"
                   >
-                    close
+                    {labels.close}
                   </button>
                 </motion.div>
 
-                {/* Middle Main Navigation List - Clean Text Only (No Icons) */}
-                <nav className="flex flex-col space-y-2.5 my-auto pl-1">
-                  <motion.div variants={itemVariants}>
+                {/* Middle Block: Folio / Store Text Toggle above Home + Separated Navigation List */}
+                <div className="flex flex-col my-auto pl-1 space-y-3">
+                  {/* Text Toggle: Folio / Store */}
+                  <motion.div
+                    variants={itemVariants}
+                    className="flex items-center gap-2.5 text-[11px] font-mono-code tracking-tight pb-2 border-b border-white/10"
+                  >
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleNav(() => onScrollTo('home'));
+                        uiSfx.playSwitch();
+                        setMenuMode('folio');
                       }}
                       onMouseEnter={() => uiSfx.playHover()}
-                      className="text-left text-[21px] sm:text-[23px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer w-full"
+                      className={`cursor-pointer transition-colors whitespace-nowrap ${
+                        menuMode === 'folio'
+                          ? 'text-white font-semibold underline underline-offset-4'
+                          : 'text-zinc-500 hover:text-zinc-300'
+                      }`}
                     >
-                      Home
+                      Folio
                     </button>
-                  </motion.div>
-
-                  <motion.div variants={itemVariants}>
+                    <span className="text-zinc-600 select-none" aria-hidden="true">/</span>
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleNav(onOpenStory);
+                        uiSfx.playSwitch();
+                        setMenuMode('store');
                       }}
                       onMouseEnter={() => uiSfx.playHover()}
-                      className="text-left text-[21px] sm:text-[23px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer w-full"
+                      className={`cursor-pointer transition-colors whitespace-nowrap ${
+                        menuMode === 'store'
+                          ? 'text-white font-semibold underline underline-offset-4'
+                          : 'text-zinc-500 hover:text-zinc-300'
+                      }`}
                     >
-                      About Me
+                      Store
                     </button>
                   </motion.div>
 
-                  <motion.div variants={itemVariants}>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleNav(() => onScrollTo('projects'));
-                      }}
-                      onMouseEnter={() => uiSfx.playHover()}
-                      className="text-left text-[21px] sm:text-[23px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer w-full"
-                    >
-                      Work
-                    </button>
-                  </motion.div>
+                  {menuMode === 'folio' ? (
+                    <nav className="flex flex-col space-y-2">
+                      <motion.div variants={itemVariants}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleNav(() => onScrollTo('home'));
+                          }}
+                          onMouseEnter={() => uiSfx.playHover()}
+                          className="text-left text-[21px] sm:text-[22px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer w-full whitespace-nowrap"
+                        >
+                          {labels.home}
+                        </button>
+                      </motion.div>
 
-                  {onOpenStore && (
-                    <motion.div variants={itemVariants}>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleNav(onOpenStore);
-                        }}
-                        onMouseEnter={() => uiSfx.playHover()}
-                        className="text-left text-[21px] sm:text-[23px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer w-full"
-                      >
-                        Store
-                      </button>
-                    </motion.div>
+                      <motion.div variants={itemVariants}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleNav(onOpenStory);
+                          }}
+                          onMouseEnter={() => uiSfx.playHover()}
+                          className="text-left text-[21px] sm:text-[22px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer w-full whitespace-nowrap"
+                        >
+                          {labels.aboutMe}
+                        </button>
+                      </motion.div>
+
+                      <motion.div variants={itemVariants}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleNav(() => onScrollTo('projects'));
+                          }}
+                          onMouseEnter={() => uiSfx.playHover()}
+                          className="text-left text-[21px] sm:text-[22px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer w-full whitespace-nowrap"
+                        >
+                          {labels.work}
+                        </button>
+                      </motion.div>
+
+                      <motion.div variants={itemVariants}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleNav(onOpenContact);
+                          }}
+                          onMouseEnter={() => uiSfx.playHover()}
+                          className="text-left text-[21px] sm:text-[22px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer w-full whitespace-nowrap"
+                        >
+                          {labels.contactMe}
+                        </button>
+                      </motion.div>
+                    </nav>
+                  ) : (
+                    <nav className="flex flex-col space-y-1.5">
+                      <motion.div variants={itemVariants}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStoreNav('/store');
+                          }}
+                          onMouseEnter={() => uiSfx.playHover()}
+                          className="text-left text-[20px] sm:text-[21px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer w-full whitespace-nowrap"
+                        >
+                          {labels.storeCatalog}
+                        </button>
+                      </motion.div>
+
+                      <motion.div variants={itemVariants}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStoreNav('/store/dashboard');
+                          }}
+                          onMouseEnter={() => uiSfx.playHover()}
+                          className="text-left text-[20px] sm:text-[21px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer w-full whitespace-nowrap"
+                        >
+                          {labels.storeDashboard}
+                        </button>
+                      </motion.div>
+
+                      <motion.div variants={itemVariants}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStoreNav('/store/transaksi');
+                          }}
+                          onMouseEnter={() => uiSfx.playHover()}
+                          className="text-left text-[20px] sm:text-[21px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer w-full whitespace-nowrap"
+                        >
+                          {labels.storeTransactions}
+                        </button>
+                      </motion.div>
+
+                      <motion.div variants={itemVariants}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStoreNav('/ulasan');
+                          }}
+                          onMouseEnter={() => uiSfx.playHover()}
+                          className="text-left text-[20px] sm:text-[21px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer w-full whitespace-nowrap"
+                        >
+                          {labels.storeReviews}
+                        </button>
+                      </motion.div>
+
+                      <motion.div variants={itemVariants}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStoreNav('/cart');
+                          }}
+                          onMouseEnter={() => uiSfx.playHover()}
+                          className="text-left text-[20px] sm:text-[21px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer w-full whitespace-nowrap"
+                        >
+                          {labels.storeCart}
+                        </button>
+                      </motion.div>
+                    </nav>
                   )}
-
-                  <motion.div variants={itemVariants}>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleNav(onOpenContact);
-                      }}
-                      onMouseEnter={() => uiSfx.playHover()}
-                      className="text-left text-[21px] sm:text-[23px] font-normal tracking-tight text-zinc-300 hover:text-white transition-all duration-200 hover:translate-x-1 leading-snug cursor-pointer w-full"
-                    >
-                      Contact Me
-                    </button>
-                  </motion.div>
-                </nav>
+                </div>
 
                 {/* Bottom Row: [ jason ]                     bio   instagram   github */}
                 <motion.div variants={itemVariants} className="flex items-center justify-between text-xs pt-1">
