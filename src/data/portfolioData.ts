@@ -1173,7 +1173,8 @@ export const TRANSLATIONS = {
     nameBracket: '[steward jason liuwindra]',
     introRole: 'saya mendesain, dan saya menulis kode. yang saya pedulikan adalah membuat yang rumit menjadi sederhana — dan yang sederhana menjadi bermakna.',
     quoteCenter:
-      'saya tidak pernah terburu-buru dalam berkarya. saya membiarkan setiap garis, tipografi, dan ruang kosong bernapas seolah-olah antarmuka itu akan ==bertahan selama bertahun-tahun==. bagi saya, desain yang baik bukan soal seberapa ramai layar terlihat, melainkan bagaimana ==setiap piksel membawa tujuan yang jelas== — menyederhanakan sistem yang rumit menjadi ==pengalaman yang terasa tenang, cepat, dan bermakna==.',
+      'saya tidak terburu-buru. saya membiarkan setiap garis dan setiap ruang kosong seolah akan bertahan bertahun-tahun.',
+    quoteSub: 'terkadang saya menunggu sampai momennya telah berlalu.',
     myStory: 'cerita saya',
     storyScrollHint: 'scroll perlahan untuk membaca keseluruhan cerita ↓',
     storyScrollContinue: 'lanjut scroll ke karya pilihan ↓',
@@ -1247,7 +1248,8 @@ export const TRANSLATIONS = {
     nameBracket: '[steward jason liuwindra]',
     introRole: 'i design, and i write code. what i care about is making the complex simple — and the simple meaningful.',
     quoteCenter:
-      "i never rush the craft. i leave every line, proportion, and quiet empty space as if the interface will ==stay relevant for years to come==. to me, great design is never about visual noise — it is about making sure ==every single pixel carries clear intent==, turning complex software into ==something calm, fast, and deeply human==.",
+      "i don't rush. i leave every line and every empty space as if it will stay for years.",
+    quoteSub: 'sometimes i wait until the moment has already passed.',
     myStory: 'my story',
     storyScrollHint: 'scroll slowly to read the full story ↓',
     storyScrollContinue: 'continue scrolling to selected works ↓',
@@ -1271,7 +1273,7 @@ export const TRANSLATIONS = {
     linksLabel: '[links]',
     connectLabel: '[connect]',
     home: 'home',
-    aboutme: 'aboutme',
+    aboutme: 'about me',
     manifest: 'manifest',
     projects: 'projects',
     services: 'services',
@@ -1318,7 +1320,8 @@ export const TRANSLATIONS = {
     nameBracket: '[steward jason liuwindra]',
     introRole: 'ich gestalte und schreibe code. mir geht es darum, komplexes einfach zu machen – und einfaches bedeutungsvoll.',
     quoteCenter:
-      'ich überstürze das handwerk nie. ich setze jede linie, proportion und jeden ruhigen freiraum so, als würde das interface ==über jahre hinweg bestand haben==. gutes design bedeutet für mich keinen visuellen lärm, sondern dass ==jedes einzelne pixel eine klare absicht trägt== — und komplexe systeme in ==etwas ruhiges, schnelles und menschliches== verwandelt.',
+      'ich eile nicht. ich lasse jede linie und jeden leeren raum so, als würde er jahrelang bleiben.',
+    quoteSub: 'manchmal warte ich, bis der moment bereits vergangen ist.',
     myStory: 'meine geschichte',
     storyScrollHint: 'langsam scrollen, um die ganze geschichte zu lesen ↓',
     storyScrollContinue: 'weiter scrollen zu ausgewählten werken ↓',
@@ -1389,7 +1392,8 @@ export const TRANSLATIONS = {
     nameBracket: '[steward jason liuwindra]',
     introRole: '私はデザインし、コードを書きます。複雑なものをシンプルにし、シンプルなものに意味を持たせることを大切にしています。',
     quoteCenter:
-      '私は決して制作を急ぎません。すべての線や比率、そして静かな余白を、そのインターフェースが ==何年も生き続けるかのように== 丁寧に刻みます。優れたデザインとは装飾を増やすことではなく、==すべてのピクセルに明確な意図を宿らせること== であり、複雑な仕組みを ==穏やかで速く、人間らしい体験== へと導くことです。',
+      '私は急ぎません。すべての線とすべての余白を、何年も残るかのように置いておきます。',
+    quoteSub: '時には、その瞬間がすでに過ぎ去るまで待つこともあります。',
     myStory: '自己紹介',
     storyScrollHint: 'ゆっくりスクロールして全文を読む ↓',
     storyScrollContinue: 'このままスクロールして実績を見る ↓',

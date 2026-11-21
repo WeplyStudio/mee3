@@ -2,6 +2,7 @@ import React, { useState, useRef, useLayoutEffect, useCallback } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { ScrollReveal } from './ScrollReveal';
 import { AnimatedArrowUpRight } from './AnimatedIcons';
+import { FooterRobot } from './FooterRobot';
 import { TRANSLATIONS } from '../data/portfolioData';
 import { Language } from '../types';
 
@@ -31,14 +32,21 @@ export const Footer: React.FC<FooterProps> = ({
   onScrollToFaq,
 }) => {
   const t = TRANSLATIONS[lang];
-  const [hoveredLetter, setHoveredLetter] = useState<number | null>(null);
+  const [isEmailHovered, setIsEmailHovered] = useState<boolean>(false);
   const [copiedEmail, setCopiedEmail] = useState<boolean>(false);
   const bannerContainerRef = useRef<HTMLButtonElement | null>(null);
   const bannerTextRef = useRef<HTMLSpanElement | null>(null);
   const lastMeasuredWidthRef = useRef<number>(0);
 
   const emailText = 'hello@jayss.id';
-  const logoLetters = Array.from(emailText);
+  const emailDisplayText = emailText.toUpperCase();
+  const emailCopyLabels: Record<Language, { hover: string; copied: string }> = {
+    en: { hover: 'click to copy', copied: 'copied' },
+    id: { hover: 'klik untuk salin', copied: 'tersalin' },
+    de: { hover: 'zum kopieren klicken', copied: 'kopiert' },
+    ja: { hover: 'クリックしてコピー', copied: 'コピーしました' },
+  };
+  const currentCopyLabel = emailCopyLabels[lang] || emailCopyLabels.en;
 
   const fitBannerText = useCallback((force = false) => {
     const container = bannerContainerRef.current;
@@ -134,26 +142,31 @@ export const Footer: React.FC<FooterProps> = ({
   // and glides gracefully DOWNWARDS into place (0px) as the curtain lifts up.
   const translateY = Math.round((safeProgress - 1) * 70);
   const scale = 0.96 + 0.04 * safeProgress;
-  const opacity = 0.35 + 0.65 * safeProgress;
+  const opacity = 0.55 + 0.45 * safeProgress;
+  // Optical blur while peeking out, resolving crisp at 4/5 reveal (0.80)
+  const rawFocus = Math.max(0, Math.min(1, safeProgress / 0.8));
+  const smoothFocus = rawFocus * rawFocus * (3 - 2 * rawFocus);
+  const footerBlurPx = smoothFocus >= 0.99 ? 0 : (1 - smoothFocus) * 14;
 
   return (
     <footer
       id="contact"
-      className="sticky bottom-0 z-0 pt-16 sm:pt-20 pb-12 px-6 sm:px-12 bg-white min-h-[440px] overflow-hidden"
+      className="sticky bottom-0 z-0 pt-14 sm:pt-16 pb-6 sm:pb-8 px-6 sm:px-12 bg-white min-h-[390px] overflow-hidden"
     >
-      <div 
+      <div
         className="max-w-7xl mx-auto will-change-transform"
         style={{
           transform: `translate3d(0, ${translateY}px, 0) scale3d(${scale}, ${scale}, 1)`,
           opacity: opacity,
+          filter: footerBlurPx > 0.05 ? `blur(${footerBlurPx.toFixed(2)}px)` : undefined,
           transformOrigin: 'top center',
           backfaceVisibility: 'hidden',
           WebkitBackfaceVisibility: 'hidden',
         }}
       >
-        
+
         {/* Top Geometric Grid Columns */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-10 pb-14 border-b border-zinc-100">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-10 pb-10 sm:pb-12 border-b border-zinc-100">
           
           {/* Left Column: [contact] & get in touch (Flush Left) */}
           <div className=" flex flex-col justify-between">
@@ -293,58 +306,50 @@ export const Footer: React.FC<FooterProps> = ({
           </div>
         </div>
 
-        {/* Giant hello@jayss.id Click-to-Copy Interactive Banner */}
+        {/* Giant HELLO@JAYSS.ID Click-to-Copy Interactive Banner */}
         <ScrollReveal delay={100} distance={-30}>
-          <div className="py-8 group relative">
+          <div className="pt-7 sm:pt-8 pb-2 sm:pb-3 group relative">
             <button
               ref={bannerContainerRef}
               type="button"
               onClick={handleCopyEmail}
-              title="Click to copy hello@jayss.id"
-              className="w-full block text-left font-geist tracking-[-0.04em] text-zinc-950 leading-none whitespace-nowrap select-none transition-colors duration-500 cursor-pointer"
+              onMouseEnter={() => setIsEmailHovered(true)}
+              onMouseLeave={() => setIsEmailHovered(false)}
+              title={currentCopyLabel.hover}
+              className="w-full block text-left font-geist font-light uppercase tracking-[-0.03em] text-zinc-950 leading-none whitespace-nowrap select-none cursor-pointer"
+              style={{ fontWeight: 300 }}
             >
               <span
                 ref={bannerTextRef}
-                className="inline-block whitespace-nowrap leading-none"
-                style={{ fontSize: '14vw' }}
+                className="inline-block whitespace-nowrap leading-none font-light"
+                style={{ fontSize: '14vw', fontWeight: 300 }}
               >
-                {logoLetters.map((char, index) => (
-                  <span
-                    key={index}
-                    onMouseEnter={() => setHoveredLetter(index)}
-                    onMouseLeave={() => setHoveredLetter(null)}
-                    className={`inline-block transition-transform duration-300 ${
-                      copiedEmail
-                        ? 'text-blue-700 -translate-y-1'
-                        : hoveredLetter === index
-                        ? '-translate-y-3 scale-105 text-blue-700'
-                        : hoveredLetter !== null && Math.abs(hoveredLetter - index) === 1
-                        ? '-translate-y-1.5 text-zinc-800'
-                        : ''
-                    }`}
-                  >
-                    {char}
-                  </span>
-                ))}
+                {emailDisplayText}
               </span>
             </button>
             <div
-              className={`mt-3 text-center text-xs font-mono-code lowercase tracking-wider transition-all duration-300 ${
-                copiedEmail ? 'text-blue-700 opacity-100 translate-y-0' : 'text-zinc-400 opacity-0 -translate-y-1 pointer-events-none'
-              }`}
+              className={`mt-1.5 text-center text-xs font-mono-code tracking-wider transition-all duration-300 ${
+                copiedEmail || isEmailHovered
+                  ? 'opacity-100 translate-y-0'
+                  : 'opacity-0 -translate-y-1 pointer-events-none'
+              } ${copiedEmail ? 'text-zinc-900' : 'text-zinc-400'}`}
             >
-              [copied hello@jayss.id]
+              [{copiedEmail ? currentCopyLabel.copied : currentCopyLabel.hover}]
             </div>
           </div>
         </ScrollReveal>
 
-        {/* Bottom Copyright & Location Row */}
+        {/* Bottom Row: Option 1 Split — Stacked Location & Copyright (Bottom-Left) + 3D Robot (Bottom-Right) */}
         <ScrollReveal delay={150} distance={-15}>
-          <div className="pt-8 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-zinc-400 font-mono-code lowercase">
-            <span>indonesia</span>
-            <div className="flex items-center gap-4">
+          <div className="pt-2 sm:pt-3 flex items-end justify-between gap-4 text-xs text-zinc-400 font-mono-code lowercase">
+            <div className="flex flex-col items-start gap-1 pb-2">
+              <span>indonesia</span>
               <span>{t.designedBy}</span>
             </div>
+            <FooterRobot
+              isActive={safeProgress > 0.02}
+              className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 shrink-0 -mr-2 sm:-mr-3"
+            />
           </div>
         </ScrollReveal>
       </div>

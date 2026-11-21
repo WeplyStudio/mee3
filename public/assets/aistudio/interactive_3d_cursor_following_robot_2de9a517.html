@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Interactive 3D Cursor-Following Robot</title>
+
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Three.js 0.160.0 ES Modules Import Map -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #000000;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      cursor: default;
+    }
+
+    #canvas-container.is-hovering-robot {
+      cursor: pointer;
+    }
+
+    #canvas-container.is-orbit-mode {
+      cursor: grab;
+    }
+
+    #canvas-container.is-orbit-mode:active {
+      cursor: grabbing;
+    }
+
+    #canvas-container canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      outline: none;
+    }
+
+    /* Minimal dark-glass floating control pill */
+    .dark-glass-pill {
+      background: rgba(14, 12, 22, 0.62);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.6),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .pill-btn {
+      transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .pill-btn:active {
+      transform: scale(0.96);
+    }
+
+    .pill-btn-active {
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.85), rgba(219, 39, 119, 0.75));
+      color: #ffffff;
+      box-shadow: 0 2px 12px rgba(168, 56, 120, 0.45);
+    }
+
+    .pill-btn-inactive {
+      color: rgba(226, 232, 240, 0.72);
+    }
+
+    .pill-btn-inactive:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.08);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Full-Viewport 3D Canvas -->
+  <div id="canvas-container" aria-label="Interactive 3D Cursor-Following Robot"></div>
+
+  <!-- Unobtrusive Bottom Floating Control Pill -->
+  <div class="fixed bottom-5 sm:bottom-6 left-1/2 -translate-x-1/2 z-10 px-3">
+    <div class="dark-glass-pill rounded-full p-1 flex items-center gap-1">
+      <button
+        id="btn-orbit-toggle"
+        type="button"
+        class="pill-btn pill-btn-inactive rounded-full px-3.5 py-1.5 text-[11px] sm:text-xs font-medium whitespace-nowrap flex items-center gap-1.5"
+        title="Toggle 360° Free Orbit Camera"
+      >
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"></circle>
+          <ellipse cx="12" cy="12" rx="9" ry="3.6"></ellipse>
+        </svg>
+        <span>Free Orbit</span>
+      </button>
+
+      <div class="w-px h-3.5 bg-white/10"></div>
+
+      <button
+        id="btn-reset-view"
+        type="button"
+        class="pill-btn pill-btn-inactive rounded-full px-3 py-1.5 text-[11px] sm:text-xs font-medium whitespace-nowrap flex items-center gap-1.5"
+        title="Reset Camera View"
+      >
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path>
+          <path d="M3 3v5h5"></path>
+        </svg>
+        <span>Reset View</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Three.js Application -->
+  <script type="module">
+    import * as THREE from 'three';
+    import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+    /**
+     * ============================================================================
+     * 1. SCENE, CAMERA, RENDERER & STUDIO ENVIRONMENT
+     * ============================================================================
+     */
+    const container = document.getElementById('canvas-container');
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
+    // Smooth exponential fog melts the floor perimeter seamlessly into pitch black
+    scene.fog = new THREE.FogExp2(0x000000, 0.062);
+
+    // Classic elevated 3/4 front-left hero product angle
+    const DEFAULT_CAM_POS = new THREE.Vector3(-3.05, 3.35, 6.25);
+    const DEFAULT_CAM_TARGET = new THREE.Vector3(0.05, 1.85, 0.0);
+
+    const camera = new THREE.PerspectiveCamera(
+      34,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      100
+    );
+    camera.position.copy(DEFAULT_CAM_POS);
+    camera.lookAt(DEFAULT_CAM_TARGET);
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      powerPreference: 'high-performance'
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.14;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    container.appendChild(renderer.domElement);
+
+    // Subtle studio reflection environment (kept low so black shadows remain pure & punchy)
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const roomEnv = new RoomEnvironment();
+    const envRT = pmremGenerator.fromScene(roomEnv, 0.04);
+    scene.environment = envRT.texture;
+    roomEnv.dispose();
+    pmremGenerator.dispose();
+
+    // OrbitControls (disabled by default; toggled via Free Orbit button)
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.copy(DEFAULT_CAM_TARGET);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.065;
+    controls.enablePan = false;
+    controls.minDistance = 4.2;
+    controls.maxDistance = 13.5;
+    controls.maxPolarAngle = Math.PI * 0.485;
+    controls.enabled = false;
+
+    /**
+     * ============================================================================
+     * 2. PROCEDURAL TEXTURES (VELVET SCREEN GRADIENT & FLOOR SUBTLE MICRO-GRAIN)
+     * ============================================================================
+     */
+    function createScreenGradientTexture() {
+      const c = document.createElement('canvas');
+      c.width = 512;
+      c.height = 512;
+      const ctx = c.getContext('2d');
+
+      // Deep velvety indigo-violet gradient (darker near top, richer royal purple near bottom)
+      const grad = ctx.createLinearGradient(0, 0, 0, 512);
+      grad.addColorStop(0.0, '#13093c');
+      grad.addColorStop(0.35, '#1d1058');
+      grad.addColorStop(0.75, '#261472');
+      grad.addColorStop(1.0, '#2d1885');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 512, 512);
+
+      // Soft subtle inner vignette around the edges of the recessed screen
+      const vig = ctx.createRadialGradient(256, 270, 90, 256, 256, 330);
+      vig.addColorStop(0, 'rgba(65, 35, 165, 0.14)');
+      vig.addColorStop(1, 'rgba(6, 2, 20, 0.55)');
+      ctx.fillStyle = vig;
+      ctx.fillRect(0, 0, 512, 512);
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    function createEyeAOTexture() {
+      const c = document.createElement('canvas');
+      c.width = 128;
+      c.height = 128;
+      const ctx = c.getContext('2d');
+      const grad = ctx.createRadialGradient(64, 68, 16, 64, 68, 60);
+      grad.addColorStop(0.0, 'rgba(4, 1, 16, 0.85)');
+      grad.addColorStop(0.55, 'rgba(6, 2, 22, 0.42)');
+      grad.addColorStop(1.0, 'rgba(6, 2, 22, 0.0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 128, 128);
+      return new THREE.CanvasTexture(c);
+    }
+
+    function createFloorRadialFadeTexture() {
+      // Subtle radial falloff on floor roughness/tint so the spotlight pool melts cleanly into #000
+      const c = document.createElement('canvas');
+      c.width = 512;
+      c.height = 512;
+      const ctx = c.getContext('2d');
+      const grad = ctx.createRadialGradient(256, 256, 40, 256, 256, 252);
+      grad.addColorStop(0.0, '#ffffff');
+      grad.addColorStop(0.48, '#e8dce6');
+      grad.addColorStop(0.75, '#46263c');
+      grad.addColorStop(0.93, '#090308');
+      grad.addColorStop(1.0, '#000000');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 512, 512);
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    // Helper: create a 2D rounded rectangle THREE.Shape centered at (0,0)
+    function createRoundedRectShape(width, height, radius) {
+      const shape = new THREE.Shape();
+      const x = -width / 2;
+      const y = -height / 2;
+      const r = Math.min(radius, width / 2, height / 2);
+
+      shape.moveTo(x + r, y);
+      shape.lineTo(x + width - r, y);
+      shape.quadraticCurveTo(x + width, y, x + width, y + r);
+      shape.lineTo(x + width, y + height - r);
+      shape.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+      shape.lineTo(x + r, y + height);
+      shape.quadraticCurveTo(x, y + height, x, y + height - r);
+      shape.lineTo(x, y + r);
+      shape.quadraticCurveTo(x, y, x + r, y);
+      return shape;
+    }
+
+    /**
+     * ============================================================================
+     * 3. STAGE FLOOR (RECEIVES DRAMATIC MAGENTA/CORAL SPOTLIGHT & DIAGONAL SHADOW)
+     * ============================================================================
+     */
+    const floorGeo = new THREE.CircleGeometry(14, 96);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      map: createFloorRadialFadeTexture(),
+      roughness: 0.72,
+      metalness: 0.08,
+      envMapIntensity: 0.08
+    });
+    const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+    floorMesh.rotation.x = -Math.PI / 2;
+    floorMesh.position.y = 0;
+    floorMesh.receiveShadow = true;
+    scene.add(floorMesh);
+
+    /**
+     * ============================================================================
+     * 4. ROBOT ASSEMBLY (CUBE BASE, TWIN-PEG NECK JOINT, MONITOR HEAD & 3D EYES)
+     * ============================================================================
+     */
+    const robotGroup = new THREE.Group();
+    scene.add(robotGroup);
+
+    // --- 4A. ROBOT BASE (DARK GLOSSY-SATIN BEVELED CUBE PEDESTAL) ---
+    const cubeSize = 1.75;
+    const cubeGeo = new RoundedBoxGeometry(cubeSize, cubeSize, cubeSize, 6, 0.14);
+    const cubeMat = new THREE.MeshPhysicalMaterial({
+      color: 0x12131c,
+      metalness: 0.85,
+      roughness: 0.18,
+      clearcoat: 0.62,
+      clearcoatRoughness: 0.15,
+      envMapIntensity: 0.48
+    });
+    const cubeMesh = new THREE.Mesh(cubeGeo, cubeMat);
+    cubeMesh.position.y = cubeSize / 2; // Rests cleanly on y = 0
+    cubeMesh.castShadow = true;
+    cubeMesh.receiveShadow = true;
+    robotGroup.add(cubeMesh);
+
+    // --- 4B. NECK & JOINT ASSEMBLY (MOUNTED AT CENTER TOP OF CUBE) ---
+    const neckGroup = new THREE.Group();
+    neckGroup.position.set(0, cubeSize, 0);
+    robotGroup.add(neckGroup);
+
+    const darkChromeMat = new THREE.MeshPhysicalMaterial({
+      color: 0x14151e,
+      metalness: 0.9,
+      roughness: 0.14,
+      clearcoat: 0.75,
+      clearcoatRoughness: 0.12,
+      envMapIntensity: 0.55
+    });
+
+    const matteCollarMat = new THREE.MeshPhysicalMaterial({
+      color: 0x16161c,
+      metalness: 0.62,
+      roughness: 0.42,
+      clearcoat: 0.2,
+      envMapIntensity: 0.35
+    });
+
+    // Twin hydraulic pegs emerging from the top center of the cube
+    const pegGeo = new THREE.CylinderGeometry(0.088, 0.115, 0.36, 28);
+    const leftPeg = new THREE.Mesh(pegGeo, darkChromeMat);
+    leftPeg.position.set(-0.125, 0.14, 0.01);
+    leftPeg.rotation.z = -0.07;
+    leftPeg.castShadow = true;
+    leftPeg.receiveShadow = true;
+    neckGroup.add(leftPeg);
+
+    const rightPeg = new THREE.Mesh(pegGeo, darkChromeMat);
+    rightPeg.position.set(0.125, 0.14, -0.01);
+    rightPeg.rotation.z = 0.07;
+    rightPeg.castShadow = true;
+    rightPeg.receiveShadow = true;
+    neckGroup.add(rightPeg);
+
+    // Subtle dark base socket ring under pegs
+    const socketGeo = new THREE.CylinderGeometry(0.24, 0.28, 0.05, 32);
+    const socketMesh = new THREE.Mesh(socketGeo, matteCollarMat);
+    socketMesh.position.y = 0.015;
+    neckGroup.add(socketMesh);
+
+    // Lower collar: inverted truncated cone (wider at top, narrower at bottom)
+    const lowerCollarGeo = new THREE.CylinderGeometry(0.36, 0.21, 0.24, 40);
+    const lowerCollar = new THREE.Mesh(lowerCollarGeo, matteCollarMat);
+    lowerCollar.position.y = 0.39;
+    lowerCollar.castShadow = true;
+    lowerCollar.receiveShadow = true;
+    neckGroup.add(lowerCollar);
+
+    // Mid ring: thin beveled dark-chrome collar ring around widest seam
+    const midRingGeo = new THREE.TorusGeometry(0.358, 0.028, 16, 48);
+    const midRing = new THREE.Mesh(midRingGeo, darkChromeMat);
+    midRing.rotation.x = Math.PI / 2;
+    midRing.position.y = 0.515;
+    midRing.castShadow = true;
+    neckGroup.add(midRing);
+
+    // Upper bell neck: glossy dark metallic truncated cone tapering smoothly up into the head
+    const upperBellGeo = new THREE.CylinderGeometry(0.215, 0.362, 0.48, 48);
+    const upperBell = new THREE.Mesh(upperBellGeo, darkChromeMat);
+    upperBell.position.y = 0.76;
+    upperBell.castShadow = true;
+    upperBell.receiveShadow = true;
+    neckGroup.add(upperBell);
+
+    // --- 4C. ROBOT HEAD (PIVOT GROUP AT TOP OF NECK FOR NATURAL ROTATION) ---
+    const headPivot = new THREE.Group();
+    headPivot.position.set(0, cubeSize + 0.98, 0); // Pivot cleanly at top of upper bell
+    robotGroup.add(headPivot);
+
+    // Inner head container offset above pivot so pitch/yaw tilts naturally from the neck joint
+    const headModel = new THREE.Group();
+    headModel.position.set(0, 0.62, 0);
+    headPivot.add(headModel);
+
+    // Outer casing: wide rounded-rectangle monitor housing
+    const headW = 2.08;
+    const headH = 1.26;
+    const headD = 1.04;
+    const headCasingGeo = new RoundedBoxGeometry(headW, headH, headD, 8, 0.20);
+    const headCasingMat = new THREE.MeshPhysicalMaterial({
+      color: 0x141418,
+      metalness: 0.82,
+      roughness: 0.24,
+      clearcoat: 0.38,
+      clearcoatRoughness: 0.18,
+      envMapIntensity: 0.45
+    });
+    const headCasing = new THREE.Mesh(headCasingGeo, headCasingMat);
+    headCasing.castShadow = true;
+    headCasing.receiveShadow = true;
+    headModel.add(headCasing);
+
+    // Side ear ports (recessed vertical-oval speaker/ear rings on both left & right sides)
+    function createSideEarPort(sideSign) {
+      const earGroup = new THREE.Group();
+      earGroup.position.set(sideSign * (headW / 2 + 0.002), 0.0, 0.02);
+      earGroup.rotation.y = sideSign > 0 ? Math.PI / 2 : -Math.PI / 2;
+
+      // Outer shiny gunmetal/silver oval rim ring
+      const rimGeo = new THREE.TorusGeometry(0.145, 0.018, 16, 36);
+      const rimMat = new THREE.MeshPhysicalMaterial({
+        color: 0x454754,
+        metalness: 0.92,
+        roughness: 0.22,
+        clearcoat: 0.5,
+        envMapIntensity: 0.65
+      });
+      const rimMesh = new THREE.Mesh(rimGeo, rimMat);
+      rimMesh.scale.set(0.68, 1.22, 0.8);
+      earGroup.add(rimMesh);
+
+      // Dark recessed oval core
+      const coreGeo = new THREE.CircleGeometry(0.135, 32);
+      const coreMat = new THREE.MeshStandardMaterial({
+        color: 0x060609,
+        roughness: 0.85,
+        metalness: 0.2
+      });
+      const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+      coreMesh.scale.set(0.65, 1.18, 1);
+      coreMesh.position.z = -0.004;
+      earGroup.add(coreMesh);
+
+      return earGroup;
+    }
+
+    headModel.add(createSideEarPort(1));  // Right side ear port
+    headModel.add(createSideEarPort(-1)); // Left side ear port
+
+    // Front vibrant violet-purple rounded-rectangle bezel frame
+    const bezelOuterW = 1.92;
+    const bezelOuterH = 1.12;
+    const bezelBorder = 0.082;
+    const bezelShape = createRoundedRectShape(bezelOuterW, bezelOuterH, 0.16);
+    const bezelHole = createRoundedRectShape(
+      bezelOuterW - bezelBorder * 2,
+      bezelOuterH - bezelBorder * 2,
+      0.115
+    );
+    bezelShape.holes.push(bezelHole);
+
+    const bezelGeo = new THREE.ExtrudeGeometry(bezelShape, {
+      depth: 0.075,
+      bevelEnabled: true,
+      bevelThickness: 0.024,
+      bevelSize: 0.02,
+      bevelSegments: 5,
+      curveSegments: 24
+    });
+    const bezelMat = new THREE.MeshPhysicalMaterial({
+      color: 0x5624cc,
+      emissive: 0x240c66,
+      emissiveIntensity: 0.62,
+      metalness: 0.22,
+      roughness: 0.28,
+      clearcoat: 0.45,
+      clearcoatRoughness: 0.2,
+      envMapIntensity: 0.45
+    });
+    const bezelMesh = new THREE.Mesh(bezelGeo, bezelMat);
+    bezelMesh.position.z = headD / 2 - 0.048;
+    bezelMesh.castShadow = true;
+    bezelMesh.receiveShadow = true;
+    headModel.add(bezelMesh);
+
+    // Recessed deep velvety dark-indigo/royal-purple face screen inside the bezel
+    const screenW = bezelOuterW - bezelBorder * 2 + 0.03;
+    const screenH = bezelOuterH - bezelBorder * 2 + 0.03;
+    const screenShape = createRoundedRectShape(screenW, screenH, 0.11);
+    const screenGeo = new THREE.ShapeGeometry(screenShape, 24);
+
+    // Normalize UVs on ShapeGeometry to [0..1] for clean vertical canvas gradient mapping
+    const uvAttr = screenGeo.attributes.uv;
+    for (let i = 0; i < uvAttr.count; i++) {
+      const u = (uvAttr.getX(i) + screenW / 2) / screenW;
+      const v = (uvAttr.getY(i) + screenH / 2) / screenH;
+      uvAttr.setXY(i, u, v);
+    }
+
+    const screenMat = new THREE.MeshPhysicalMaterial({
+      map: createScreenGradientTexture(),
+      emissive: 0x160a4a,
+      emissiveIntensity: 0.45,
+      roughness: 0.62,
+      metalness: 0.08,
+      clearcoat: 0.15,
+      clearcoatRoughness: 0.4,
+      envMapIntensity: 0.22
+    });
+    const screenMesh = new THREE.Mesh(screenGeo, screenMat);
+    screenMesh.position.z = headD / 2 - 0.008;
+    screenMesh.receiveShadow = true;
+    headModel.add(screenMesh);
+
+    // --- 4D. PROTRUDING 3D PEARL-WHITE EYES (WITH SUBTLE AO & MICRO-TRACKING) ---
+    const eyeGroup = new THREE.Group();
+    eyeGroup.position.set(0, 0.095, headD / 2 + 0.002);
+    headModel.add(eyeGroup);
+
+    const eyeGeo = new THREE.SphereGeometry(0.185, 36, 36);
+    const eyeMat = new THREE.MeshPhysicalMaterial({
+      color: 0xf4f5fa,
+      emissive: 0x1e1d2e,
+      emissiveIntensity: 0.42,
+      roughness: 0.24,
+      metalness: 0.04,
+      clearcoat: 0.62,
+      clearcoatRoughness: 0.16,
+      envMapIntensity: 0.55
+    });
+
+    const eyeAOGeo = new THREE.PlaneGeometry(0.48, 0.48);
+    const eyeAOMat = new THREE.MeshBasicMaterial({
+      map: createEyeAOTexture(),
+      transparent: true,
+      depthWrite: false,
+      opacity: 0.72
+    });
+
+    const EYE_SPACING = 0.365;
+
+    // Left eye assembly
+    const leftEyeHolder = new THREE.Group();
+    leftEyeHolder.position.set(-EYE_SPACING, 0, 0);
+    eyeGroup.add(leftEyeHolder);
+
+    const leftEyeAO = new THREE.Mesh(eyeAOGeo, eyeAOMat);
+    leftEyeAO.position.set(0, -0.025, -0.004);
+    leftEyeHolder.add(leftEyeAO);
+
+    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+    leftEye.scale.set(1.0, 1.0, 0.64);
+    leftEye.position.z = 0.015;
+    leftEye.castShadow = true;
+    leftEye.receiveShadow = true;
+    leftEyeHolder.add(leftEye);
+
+    // Right eye assembly
+    const rightEyeHolder = new THREE.Group();
+    rightEyeHolder.position.set(EYE_SPACING, 0, 0);
+    eyeGroup.add(rightEyeHolder);
+
+    const rightEyeAO = new THREE.Mesh(eyeAOGeo, eyeAOMat);
+    rightEyeAO.position.set(0, -0.025, -0.004);
+    rightEyeHolder.add(rightEyeAO);
+
+    const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+    rightEye.scale.set(1.0, 1.0, 0.64);
+    rightEye.position.z = 0.015;
+    rightEye.castShadow = true;
+    rightEye.receiveShadow = true;
+    rightEyeHolder.add(rightEye);
+
+    /**
+     * ============================================================================
+     * 5. MOODY NEON-NOIR STUDIO LIGHTING RIG
+     * ============================================================================
+     */
+    // 1. Main Key SpotLight (Top-Right-Back): warm rose-magenta/coral casting diagonal shadow to bottom-left
+    const keySpot = new THREE.SpotLight(0xff5a8a, 145, 28, Math.PI / 3.4, 0.85, 1.45);
+    keySpot.position.set(4.8, 6.8, 2.2);
+    keySpot.target.position.set(-0.2, 0.0, 0.15);
+    keySpot.castShadow = true;
+    keySpot.shadow.mapSize.set(2048, 2048);
+    keySpot.shadow.camera.near = 2.0;
+    keySpot.shadow.camera.far = 18.0;
+    keySpot.shadow.bias = -0.0004;
+    keySpot.shadow.radius = 5.5;
+    scene.add(keySpot);
+    scene.add(keySpot.target);
+
+    // 2. Warm Coral-Pink Accent SpotLight (Right-Front): enriches the warm coral floor pool & top-right head rim
+    const coralSpot = new THREE.SpotLight(0xff606a, 82, 22, Math.PI / 3.2, 0.94, 1.5);
+    coralSpot.position.set(4.4, 4.2, 3.8);
+    coralSpot.target.position.set(1.3, 0.0, 0.9);
+    scene.add(coralSpot);
+    scene.add(coralSpot.target);
+
+    // 3. Deep Violet-Purple Fill SpotLight (Top-Left-Front): blends deep violet floor glow & purple bezel
+    const purpleSpot = new THREE.SpotLight(0x7a2cff, 68, 22, Math.PI / 3.1, 0.95, 1.55);
+    purpleSpot.position.set(-4.2, 5.4, 3.6);
+    purpleSpot.target.position.set(-1.1, 0.4, 0.4);
+    scene.add(purpleSpot);
+    scene.add(purpleSpot.target);
+
+    // 4. Cool Pale Lavender-White Specular Rim/Key Light (Top-Left-Front):
+    //    Creates the bright white bevel highlight on the cube, vertical sheen on neck, and illuminates 3D eyes
+    const coolSpecLight = new THREE.DirectionalLight(0xe0e4ff, 2.15);
+    coolSpecLight.position.set(-3.6, 5.8, 5.6);
+    scene.add(coolSpecLight);
+
+    // 5. Dedicated Warm Coral Rim PointLight near top-right-back of the head for signature glowing edge highlight
+    const headRimLight = new THREE.PointLight(0xff5e7e, 14.5, 6.2, 1.6);
+    headRimLight.position.set(1.55, 4.15, 0.72);
+    scene.add(headRimLight);
+
+    // 6. Subtle cool-white eye fill light so the 3D pearl eyes always read crisp and sculptural
+    const eyeFillLight = new THREE.PointLight(0xf0f4ff, 3.2, 5.5, 1.8);
+    eyeFillLight.position.set(-1.1, 3.6, 2.75);
+    scene.add(eyeFillLight);
+
+    /**
+     * ============================================================================
+     * 6. INTERACTION STATE (CURSOR TRACKING, BLINKING, CLICK NOD & ORBIT TOGGLE)
+     * ============================================================================
+     */
+    const state = {
+      orbitMode: false,
+      mouse: new THREE.Vector2(0, 0),
+      smoothMouse: new THREE.Vector2(0, 0),
+      lastMouseMoveTime: performance.now(),
+      isHoveringRobot: false,
+
+      // Head rotation damped state
+      currentYaw: -0.28,
+      currentPitch: 0.05,
+      currentRoll: 0.0,
+
+      // Click happy nod / bounce spring physics
+      nodDisp: 0,
+      nodVel: 0,
+      hopDisp: 0,
+      hopVel: 0,
+
+      // Automatic & double-blink animation state
+      blinkQueue: [],
+      nextAutoBlinkTime: 2.8 + Math.random() * 2.5,
+      activeBlinkProgress: -1 // -1 = not blinking, 0..1 = active blink cycle
+    };
+
+    const raycaster = new THREE.Raycaster();
+    const pointerDownPos = { x: 0, y: 0 };
+
+    function updateNormalizedPointer(clientX, clientY) {
+      state.mouse.x = (clientX / window.innerWidth) * 2 - 1;
+      state.mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+      state.lastMouseMoveTime = performance.now();
+    }
+
+    function checkRobotHover() {
+      raycaster.setFromCamera(state.mouse, camera);
+      const hits = raycaster.intersectObject(robotGroup, true);
+      state.isHoveringRobot = hits.length > 0;
+      if (!state.orbitMode) {
+        container.classList.toggle('is-hovering-robot', state.isHoveringRobot);
+      }
+    }
+
+    function triggerHappyReaction() {
+      // Queue a playful double-blink
+      state.blinkQueue = [0.0, 0.22];
+      // Inject spring impulse for a cute happy head nod + subtle bounce
+      state.nodVel = 4.6;
+      state.hopVel = 1.65;
+    }
+
+    // Unified mouse & touch pointer events
+    window.addEventListener('pointermove', (e) => {
+      updateNormalizedPointer(e.clientX, e.clientY);
+      checkRobotHover();
+    });
+
+    container.addEventListener('pointerdown', (e) => {
+      pointerDownPos.x = e.clientX;
+      pointerDownPos.y = e.clientY;
+      updateNormalizedPointer(e.clientX, e.clientY);
+    });
+
+    container.addEventListener('pointerup', (e) => {
+      const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+      if (dist < 8) {
+        updateNormalizedPointer(e.clientX, e.clientY);
+        raycaster.setFromCamera(state.mouse, camera);
+        const hits = raycaster.intersectObject(robotGroup, true);
+        if (hits.length > 0) {
+          triggerHappyReaction();
+        }
+      }
+    });
+
+    // Subtle re-center if mouse leaves viewport
+    window.addEventListener('pointerleave', () => {
+      state.mouse.set(0, 0);
+      state.isHoveringRobot = false;
+      container.classList.remove('is-hovering-robot');
+    });
+
+    /**
+     * ============================================================================
+     * 7. FLOATING PILL CONTROLS (FREE ORBIT & RESET VIEW)
+     * ============================================================================
+     */
+    const btnOrbitToggle = document.getElementById('btn-orbit-toggle');
+    const btnResetView = document.getElementById('btn-reset-view');
+
+    let isResettingCamera = false;
+
+    btnOrbitToggle.addEventListener('click', () => {
+      state.orbitMode = !state.orbitMode;
+      controls.enabled = state.orbitMode;
+
+      if (state.orbitMode) {
+        btnOrbitToggle.classList.replace('pill-btn-inactive', 'pill-btn-active');
+        container.classList.add('is-orbit-mode');
+        container.classList.remove('is-hovering-robot');
+      } else {
+        btnOrbitToggle.classList.replace('pill-btn-active', 'pill-btn-inactive');
+        container.classList.remove('is-orbit-mode');
+      }
+    });
+
+    btnResetView.addEventListener('click', () => {
+      isResettingCamera = true;
+      state.mouse.set(0, 0);
+      triggerHappyReaction();
+    });
+
+    // Cancel smooth camera reset if user manually starts orbiting
+    controls.addEventListener('start', () => {
+      isResettingCamera = false;
+    });
+
+    /**
+     * ============================================================================
+     * 8. RESPONSIVE RESIZE HANDLER
+     * ============================================================================
+     */
+    function handleResize() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const aspect = w / h;
+
+      camera.aspect = aspect;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+
+      // Keep robot well-framed on narrow portrait screens if not actively orbiting
+      if (!state.orbitMode && !isResettingCamera) {
+        const scaleDist = aspect < 0.8 ? 1.38 : aspect < 1.1 ? 1.16 : 1.0;
+        const dir = DEFAULT_CAM_POS.clone().sub(DEFAULT_CAM_TARGET).multiplyScalar(scaleDist);
+        camera.position.copy(DEFAULT_CAM_TARGET).add(dir);
+        camera.lookAt(DEFAULT_CAM_TARGET);
+      }
+    }
+
+    window.addEventListener('resize', handleResize);
+    handleResize();
+
+    /**
+     * ============================================================================
+     * 9. MAIN ANIMATION LOOP (SMOOTH 3D CURSOR TRACKING, BLINK & BREATHING)
+     * ============================================================================
+     */
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const dt = Math.min(clock.getDelta(), 0.05);
+      const elapsed = clock.getElapsedTime();
+
+      // Smoothly reset camera when "Reset View" is clicked
+      if (isResettingCamera) {
+        const aspect = window.innerWidth / window.innerHeight;
+        const scaleDist = aspect < 0.8 ? 1.38 : aspect < 1.1 ? 1.16 : 1.0;
+        const targetPos = DEFAULT_CAM_TARGET.clone().add(
+          DEFAULT_CAM_POS.clone().sub(DEFAULT_CAM_TARGET).multiplyScalar(scaleDist)
+        );
+        const lerpAlpha = 1 - Math.exp(-6.5 * dt);
+        camera.position.lerp(targetPos, lerpAlpha);
+        controls.target.lerp(DEFAULT_CAM_TARGET, lerpAlpha);
+        camera.lookAt(controls.target);
+
+        if (
+          camera.position.distanceTo(targetPos) < 0.015 &&
+          controls.target.distanceTo(DEFAULT_CAM_TARGET) < 0.015
+        ) {
+          camera.position.copy(targetPos);
+          controls.target.copy(DEFAULT_CAM_TARGET);
+          isResettingCamera = false;
+        }
+      }
+
+      if (controls.enabled) {
+        controls.update();
+      }
+
+      // Smooth cursor damping
+      const mouseEase = 1 - Math.exp(-9.0 * dt);
+      state.smoothMouse.x = THREE.MathUtils.lerp(state.smoothMouse.x, state.mouse.x, mouseEase);
+      state.smoothMouse.y = THREE.MathUtils.lerp(state.smoothMouse.y, state.mouse.y, mouseEase);
+
+      // Subtle idle breathing / curious sway when cursor hasn't moved recently
+      const idleSeconds = (performance.now() - state.lastMouseMoveTime) / 1000;
+      const idleBlend = THREE.MathUtils.clamp((idleSeconds - 2.0) / 2.5, 0, 1);
+
+      const breathY = Math.sin(elapsed * 1.9) * 0.018;
+      const idleYaw = Math.sin(elapsed * 0.85) * 0.075 * idleBlend;
+      const idlePitch = Math.sin(elapsed * 1.25) * 0.038 * idleBlend;
+      const idleRoll = Math.cos(elapsed * 0.7) * 0.025 * idleBlend;
+
+      // Compute natural 3D head look-at target angles relative to default 3/4 view
+      // Base neutral pose faces slightly left (-0.24 rad) so it looks directly at the viewer
+      const targetYaw = THREE.MathUtils.clamp(
+        -0.24 + state.smoothMouse.x * 0.68 + idleYaw,
+        -0.98,
+        0.58
+      );
+      const targetPitch = THREE.MathUtils.clamp(
+        0.04 - state.smoothMouse.y * 0.42 + idlePitch,
+        -0.46,
+        0.48
+      );
+      const targetRoll = THREE.MathUtils.clamp(
+        -state.smoothMouse.x * 0.11 + idleRoll,
+        -0.16,
+        0.16
+      );
+
+      // Silky damped rotational interpolation for organic servo feel
+      const headEase = 1 - Math.exp(-7.5 * dt);
+      state.currentYaw = THREE.MathUtils.lerp(state.currentYaw, targetYaw, headEase);
+      state.currentPitch = THREE.MathUtils.lerp(state.currentPitch, targetPitch, headEase);
+      state.currentRoll = THREE.MathUtils.lerp(state.currentRoll, targetRoll, headEase);
+
+      // Spring-damper physics for happy click nod & subtle hop
+      const stiffness = 175;
+      const damping = 11.5;
+
+      state.nodVel += (-stiffness * state.nodDisp - damping * state.nodVel) * dt;
+      state.nodDisp += state.nodVel * dt;
+
+      state.hopVel += (-stiffness * state.hopDisp - damping * state.hopVel) * dt;
+      state.hopDisp += state.hopVel * dt;
+
+      // Apply transforms to head pivot
+      headPivot.rotation.order = 'YXZ';
+      headPivot.rotation.y = state.currentYaw;
+      headPivot.rotation.x = state.currentPitch + state.nodDisp * 0.14;
+      headPivot.rotation.z = state.currentRoll;
+      headPivot.position.y = cubeSize + 0.98 + breathY + Math.max(-0.04, state.hopDisp * 0.06);
+
+      // Subtle eye micro-tracking inside the purple recessed screen
+      const eyeTargetX = state.smoothMouse.x * 0.055;
+      const eyeTargetY = state.smoothMouse.y * 0.038;
+      eyeGroup.position.x = THREE.MathUtils.lerp(eyeGroup.position.x, eyeTargetX, headEase);
+      eyeGroup.position.y = THREE.MathUtils.lerp(eyeGroup.position.y, 0.095 + eyeTargetY, headEase);
+
+      // Natural automatic blinking + queued double-blinks on click
+      if (state.activeBlinkProgress < 0) {
+        if (state.blinkQueue.length > 0) {
+          state.blinkQueue[0] -= dt;
+          if (state.blinkQueue[0] <= 0) {
+            state.blinkQueue.shift();
+            state.activeBlinkProgress = 0;
+          }
+        } else {
+          state.nextAutoBlinkTime -= dt;
+          if (state.nextAutoBlinkTime <= 0) {
+            state.activeBlinkProgress = 0;
+            state.nextAutoBlinkTime = 3.0 + Math.random() * 3.0;
+          }
+        }
+      }
+
+      let blinkScaleY = 1.0;
+      if (state.activeBlinkProgress >= 0) {
+        const blinkDuration = 0.165;
+        state.activeBlinkProgress += dt / blinkDuration;
+        if (state.activeBlinkProgress >= 1.0) {
+          state.activeBlinkProgress = -1;
+          blinkScaleY = 1.0;
+        } else {
+          // Smooth sine-eased squash down to 0.08 and pop right back up
+          const s = Math.sin(state.activeBlinkProgress * Math.PI);
+          blinkScaleY = 1.0 - s * 0.92;
+        }
+      }
+
+      leftEye.scale.y = blinkScaleY;
+      rightEye.scale.y = blinkScaleY;
+
+      renderer.render(scene, camera);
+    }
+
+    window.onload = function () {
+      animate();
+    };
+  </script>
+</body>
+</html>

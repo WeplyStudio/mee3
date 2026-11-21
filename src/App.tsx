@@ -552,13 +552,9 @@ export default function App() {
     <div id="page-transition-viewport" className="min-h-screen bg-white text-[#121212] font-sans selection:bg-black selection:text-white relative">
       <GsapGlobalAnimator pageKey={`${currentPage}-${activeProject?.id || ''}`} lang={lang} />
       {/* ------------------------------------------------------------- */}
-      {/* TOP FLOATING / STICKY HEADER */}
+      {/* TOP FLOATING / STICKY HEADER (UNIFIED CENTERED PILL) */}
       {/* ------------------------------------------------------------- */}
-      <header className="fixed top-0 left-0 right-0 z-40 px-4 sm:px-8 py-3.5 sm:py-5 flex items-center justify-between pointer-events-none">
-        {/* Left: Spacer to balance language switch button */}
-        <div className="flex-1 flex justify-start items-center" />
-
-        {/* Center / Primary: [ ] Morphing Menu Button to Card */}
+      <header className="fixed top-0 left-0 right-0 z-40 px-4 sm:px-8 py-3.5 sm:py-5 flex items-center justify-center pointer-events-none">
         <div className="flex justify-center">
           <MorphingMenu
             isOpen={isMenuOpen}
@@ -603,28 +599,6 @@ export default function App() {
             }}
             menuLabel={t.menu}
           />
-        </div>
-
-        {/* Right: Red Language selector badge (Matching Screenshot) */}
-        <div className="flex-1 flex justify-end">
-          <button
-            onClick={() => {
-              uiSfx.playSwitch();
-              const languages: Language[] = ['en', 'id', 'de', 'ja'];
-              const nextIdx = (languages.indexOf(lang) + 1) % languages.length;
-              setLang(languages[nextIdx]);
-            }}
-            className={`pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-1.5 text-white font-sans text-xs sm:text-[13px] rounded-[8px] sm:rounded-[9px] shadow-xs hover:shadow-sm transition-all duration-300 cursor-pointer select-none ${
-              lang === 'en' ? 'bg-[#d92338] hover:bg-[#c51c30]' :
-              lang === 'id' ? 'bg-emerald-600 hover:bg-emerald-700' :
-              lang === 'de' ? 'bg-slate-700 hover:bg-slate-800' :
-              'bg-indigo-600 hover:bg-indigo-700'
-            }`}
-            title={`Language: ${lang}. Click to switch.`}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
-            <span className="font-medium lowercase tracking-tight">{lang}</span>
-          </button>
         </div>
       </header>
 
@@ -730,20 +704,22 @@ export default function App() {
 
             {/* Right Column: Statement */}
             <div className="md:col-span-5">
-              <div className="text-xs sm:text-sm text-zinc-600 leading-relaxed max-w-md">
+              <p
+                data-explanatory="true"
+                className="text-xs sm:text-sm text-zinc-600 leading-relaxed max-w-md"
+              >
                 {t.introRole}
-              </div>
+              </p>
             </div>
           </div>
         </ScrollReveal>
 
-        {/* SCROLL-LOCKED MY STORY WITH SMOOTH GRAY-TO-BLACK FILL & STABILO HIGHLIGHTER */}
+        {/* MINIMAL EDITORIAL QUOTE & MY STORY */}
         <AnimatedQuote
           text={t.quoteCenter}
+          subText={t.quoteSub}
           onOpenStory={() => navigateTo('aboutme')}
           myStoryLabel={t.myStory}
-          scrollHintLabel={t.storyScrollHint}
-          scrollContinueLabel={t.storyScrollContinue}
         />
       </section>
 
@@ -771,7 +747,10 @@ export default function App() {
                     </ImageTooltip>
                   </div>
                   <div className="p-4 sm:p-5 space-y-0.5">
-                    <div className="text-xs sm:text-[13px] font-medium text-zinc-900 group-hover:underline lowercase flex items-center justify-between">
+                    <div
+                      data-scroll-blur="true"
+                      className="text-xs sm:text-[13px] font-medium text-zinc-900 group-hover:underline lowercase flex items-center justify-between"
+                    >
                       <span>{project.title}</span>
                       <ArrowUpRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-zinc-500" />
                     </div>
@@ -1033,10 +1012,13 @@ export default function App() {
                           {faqItem.question}
                         </span>
                       </div>
-                      <span className={`text-xs font-mono-code transition-transform duration-300 text-zinc-400 ${
-                        isExpanded ? 'rotate-90 text-zinc-900 font-bold' : ''
-                      }`}>
-                        [+]
+                      <span
+                        data-gsap-custom="true"
+                        className={`text-xs font-mono-code shrink-0 ml-4 transition-colors duration-200 ${
+                          isExpanded ? 'text-zinc-900 font-bold' : 'text-zinc-400 group-hover:text-zinc-700'
+                        }`}
+                      >
+                        {isExpanded ? '[-]' : '[+]'}
                       </span>
                     </button>
 

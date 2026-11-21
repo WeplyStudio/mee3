@@ -132,6 +132,7 @@ export const MorphingMenu: React.FC<Props> = ({
   isOpen,
   setIsOpen,
   lang = 'en',
+  onSelectLang,
   isAudioPlaying,
   onToggleAudio,
   onOpenContact,
@@ -147,6 +148,25 @@ export const MorphingMenu: React.FC<Props> = ({
   const [isNameToggled, setIsNameToggled] = useState<boolean>(false);
   const [isNameHovered, setIsNameHovered] = useState<boolean>(false);
   const labels = MENU_LOCALE_LABELS[lang] || MENU_LOCALE_LABELS.en;
+
+  const handleCycleLanguage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onSelectLang) return;
+    uiSfx.playSwitch();
+    const languages: Language[] = ['en', 'id', 'de', 'ja'];
+    const currentIndex = languages.indexOf(lang as Language);
+    const nextIdx = (currentIndex + 1) % languages.length;
+    onSelectLang(languages[nextIdx]);
+  };
+
+  const langBgColor =
+    lang === 'en'
+      ? 'bg-[#cc2b36] hover:bg-[#b8242e]'
+      : lang === 'id'
+      ? 'bg-emerald-600 hover:bg-emerald-700'
+      : lang === 'de'
+      ? 'bg-slate-700 hover:bg-slate-800'
+      : 'bg-indigo-600 hover:bg-indigo-700';
 
   // Close on Escape key
   useEffect(() => {
@@ -197,8 +217,26 @@ export const MorphingMenu: React.FC<Props> = ({
         )}
       </AnimatePresence>
 
-      {/* Anchor Container */}
-      <div className="relative w-[170px] h-[40px] pointer-events-auto z-50">
+      {/* Centered Navbar Anchor Container (250px x 38px, transparent) */}
+      <div className="relative w-[250px] h-[38px] pointer-events-auto z-50">
+        {/* Right Language Button (fades cleanly when menu opens) */}
+        {onSelectLang && (
+          <button
+            type="button"
+            onClick={handleCycleLanguage}
+            onMouseEnter={() => uiSfx.playHover()}
+            title={`Language: ${lang}. Click to switch.`}
+            aria-label={`Switch language (current: ${lang})`}
+            className={`absolute top-0 right-0 w-[58px] h-[38px] rounded-[8px] flex items-center justify-center gap-1.5 text-white font-sans text-[13px] font-medium lowercase tracking-tight transition-all duration-200 cursor-pointer select-none ${langBgColor} ${
+              isOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
+            <span>{lang}</span>
+          </button>
+        )}
+
+        {/* Morphing Black Menu Bar -> Expanded Dark Menu Card */}
         <motion.div
           ref={containerRef}
           data-morphing-menu-box="true"
@@ -206,20 +244,24 @@ export const MorphingMenu: React.FC<Props> = ({
           animate={
             isOpen
               ? {
+                  top: 0,
+                  left: -21,
                   width: 292,
                   height: 336,
-                  borderRadius: 22,
+                  borderRadius: 20,
                   backgroundColor: '#121213',
                   boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.95)',
                   borderColor: 'rgba(255, 255, 255, 0.12)',
                 }
               : {
-                  width: 170,
-                  height: 40,
-                  borderRadius: 20,
-                  backgroundColor: '#0d0d0e',
-                  boxShadow: '0 4px 20px -4px rgba(0, 0, 0, 0.5)',
-                  borderColor: 'rgba(255, 255, 255, 0.08)',
+                  top: 0,
+                  left: 0,
+                  width: onSelectLang ? 184 : 250,
+                  height: 38,
+                  borderRadius: 8,
+                  backgroundColor: '#0a0a0b',
+                  boxShadow: '0 2px 10px -2px rgba(0, 0, 0, 0.28)',
+                  borderColor: 'rgba(255, 255, 255, 0.05)',
                 }
           }
           transition={{
@@ -227,7 +269,7 @@ export const MorphingMenu: React.FC<Props> = ({
             duration: isOpen ? 0.55 : 0.34,
             ease: [0.22, 1, 0.36, 1],
           }}
-          className="absolute top-0 left-1/2 -translate-x-1/2 overflow-hidden border flex flex-col justify-between select-none cursor-pointer max-w-[calc(100vw-32px)]"
+          className="absolute overflow-hidden border flex flex-col justify-between select-none cursor-pointer max-w-[calc(100vw-32px)]"
           style={{ transformOrigin: 'top center' }}
           onClick={() => {
             if (!isOpen) {
@@ -236,14 +278,16 @@ export const MorphingMenu: React.FC<Props> = ({
             }
           }}
         >
-          {/* Closed State Pill Content (Always mounted so it never pops or flickers during transitions) */}
+          {/* Closed State Black Bar Content: [ ]   menu */}
           <div
-            className={`absolute inset-x-0 top-0 h-[40px] flex items-center justify-between px-5 text-xs sm:text-[13px] font-sans font-light tracking-tight text-white hover:text-zinc-200 transition-opacity duration-200 ${
+            className={`absolute inset-x-0 top-0 h-[38px] flex items-center justify-start gap-3.5 px-4 text-[13px] font-sans font-normal tracking-tight text-white hover:text-zinc-200 transition-opacity duration-200 ${
               isOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
             }`}
           >
-            <span className="font-mono-code text-zinc-400 tracking-wider text-xs">[ ]</span>
-            <span className="font-normal lowercase tracking-tight text-xs sm:text-[13px]">{menuLabel}</span>
+            <span className="font-mono-code text-zinc-400 tracking-wider text-xs shrink-0">[ ]</span>
+            <span className="font-normal lowercase tracking-tight text-[13px] truncate">
+              {menuLabel}
+            </span>
           </div>
 
           {/* Open State Menu Content */}

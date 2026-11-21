@@ -39,7 +39,10 @@ export function AnimatedStatCard({ stat, idx }: AnimatedStatCardProps) {
         <div className="text-xs font-mono-code text-zinc-900 font-bold lowercase">
           {stat.label}
         </div>
-        <div className="text-[11px] text-zinc-500 leading-relaxed lowercase">
+        <div
+          data-explanatory="true"
+          className="text-[11px] text-zinc-500 leading-relaxed lowercase"
+        >
           {stat.sublabel}
         </div>
       </div>

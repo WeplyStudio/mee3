@@ -81,34 +81,24 @@ export const ProjectMockup: React.FC<Props> = ({ type, className = '', variant =
 
   if (projectImg) {
     return (
-      <div 
+      <div
         ref={containerRef}
         className={`w-full h-full relative overflow-hidden bg-[#090a0f] flex items-center justify-center ${className}`}
-        style={{
-          clipPath: isVisible ? 'inset(0% 0% 0% 0%)' : 'inset(100% 0% 0% 0%)',
-          WebkitClipPath: isVisible ? 'inset(0% 0% 0% 0%)' : 'inset(100% 0% 0% 0%)',
-          opacity: isVisible ? 1 : 0.85,
-          transition: 'clip-path 1050ms cubic-bezier(0.16, 1, 0.3, 1), -webkit-clip-path 1050ms cubic-bezier(0.16, 1, 0.3, 1), opacity 800ms ease-out',
-          willChange: 'clip-path, -webkit-clip-path',
-          backfaceVisibility: 'hidden',
-          WebkitBackfaceVisibility: 'hidden',
-        }}
       >
         {/* Skeleton pulse until loaded */}
         {!loaded && (
           <div className="absolute inset-0 bg-zinc-900/60 animate-pulse pointer-events-none z-10" />
         )}
-        <img 
+        <img
           ref={imgRef}
-          src={projectImg} 
+          src={projectImg}
           srcSet={projectSrcSet}
           sizes={sizes}
           alt={`${type} preview`}
           loading="lazy"
           decoding="async"
           onLoad={() => setLoaded(true)}
-          style={{ transform: 'none' }}
-          className="w-full h-full object-contain sm:object-cover object-center transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03] will-change-transform" 
+          className="w-full h-full object-contain sm:object-cover object-center transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03] will-change-transform"
         />
       </div>
     );

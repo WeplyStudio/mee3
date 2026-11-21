@@ -373,9 +373,9 @@ export const ProjectDetailPage: React.FC<Props> = ({
               <div className="md:col-span-3 text-xs sm:text-[13px] font-mono-code text-zinc-400 lowercase">
                 {l.problem}
               </div>
-              <div className="md:col-span-9 text-xs sm:text-[13px] text-zinc-700 leading-relaxed max-w-2xl">
+              <p className="md:col-span-9 text-xs sm:text-[13px] text-zinc-700 leading-relaxed max-w-2xl">
                 {project.problem}
-              </div>
+              </p>
             </div>
           </ScrollReveal>
 
@@ -385,9 +385,9 @@ export const ProjectDetailPage: React.FC<Props> = ({
               <div className="md:col-span-3 text-xs sm:text-[13px] font-mono-code text-zinc-400 lowercase">
                 {l.decisions}
               </div>
-              <div className="md:col-span-9 text-xs sm:text-[13px] text-zinc-700 leading-relaxed max-w-2xl">
+              <p className="md:col-span-9 text-xs sm:text-[13px] text-zinc-700 leading-relaxed max-w-2xl">
                 {project.decisions}
-              </div>
+              </p>
             </div>
           </ScrollReveal>
 
@@ -398,9 +398,9 @@ export const ProjectDetailPage: React.FC<Props> = ({
                 <div className="md:col-span-3 text-xs sm:text-[13px] font-mono-code text-zinc-400 lowercase">
                   {l.challenge}
                 </div>
-                <div className="md:col-span-9 text-xs sm:text-[13px] text-zinc-700 leading-relaxed max-w-2xl">
+                <p className="md:col-span-9 text-xs sm:text-[13px] text-zinc-700 leading-relaxed max-w-2xl">
                   {project.challenge}
-                </div>
+                </p>
               </div>
             </ScrollReveal>
           )}
@@ -411,9 +411,9 @@ export const ProjectDetailPage: React.FC<Props> = ({
               <div className="md:col-span-3 text-xs sm:text-[13px] font-mono-code text-zinc-400 lowercase">
                 {l.impact}
               </div>
-              <div className="md:col-span-9 text-xs sm:text-[13px] text-zinc-700 leading-relaxed max-w-2xl">
+              <p className="md:col-span-9 text-xs sm:text-[13px] text-zinc-700 leading-relaxed max-w-2xl">
                 {project.impact}
-              </div>
+              </p>
             </div>
           </ScrollReveal>
         </section>

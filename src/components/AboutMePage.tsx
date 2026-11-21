@@ -1099,9 +1099,9 @@ export const AboutMePage: React.FC<Props> = ({
                 {tMaster.thoughtLabel}
               </div>
               <div className="md:col-span-8 space-y-6 text-left">
-                <div className="text-xs sm:text-[13.5px] text-zinc-700 leading-relaxed lowercase text-left">
+                <p className="text-xs sm:text-[13.5px] text-zinc-700 leading-relaxed lowercase text-left">
                   {tMaster.thoughtIntro}
-                </div>
+                </p>
 
                 <div className="space-y-4 pt-2">
                   {philosophy.map((item, index) => (
